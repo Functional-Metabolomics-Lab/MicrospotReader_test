@@ -1,3 +1,13 @@
+'''
+-------------------------------------------------------------------------------
+ Purpose:       Functions and Classes for detection of microspots.
+
+ Author:        Simon Knoblauch
+
+ Last modified: 2023-09-27
+-------------------------------------------------------------------------------
+'''
+
 # Importing dependencies
 import imageio.v3 as iio
 import pandas as pd
@@ -131,7 +141,7 @@ class spot:
         self.col=col
         self.row_name=row_name
     
-    def assign_halo(self,halo_list:list) -> None:
+    def assign_halo(self,halo_list:list,dist_thresh:float=14.73402725) -> None:
         """
         ## Description
         Checks a list of halos for a match and assigns it to the spot.
@@ -141,9 +151,10 @@ class spot:
         |Parameter|Type|Description|
         |---|---|---|
         |halo_list|int|List of halo-objects|
+        |dist_thresh|float|Distance threshold for acceptance of halo|
         """
         for h in halo_list:
-            if np.linalg.norm(np.array((h.x,h.y))-np.array((self.x,self.y)))<14.73402725:
+            if np.linalg.norm(np.array((h.x,h.y))-np.array((self.x,self.y)))<dist_thresh:
                 self.halo=h.rad
             
 
@@ -232,7 +243,7 @@ class spot:
         return image
 
     @staticmethod
-    def detect(gray_img:np.array,spot_nr:int) -> list:
+    def detect(gray_img:np.array,spot_nr:int,canny_sig:int=10,canny_lowthresh:float=0.001,canny_highthresh:float=0.001,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.3) -> list:
         """
         ## Description
 
@@ -244,6 +255,12 @@ class spot:
         |---|---|---|
         |gray_img|np.array|Grayscale np.array of image to be analyzed|
         |spot_nr|int|Maximum number of spots to be detected in the image|
+        |canny_sig|int|Sigma value for gaussian blur during canny edge detection|
+        |canny_lowthresh|float|Low threshold for canny edge detection|
+        |canny_highthres|float|High threshold for canny edge detection|
+        |hough_minx|int|Miniumum distance in x direction between 2 peaks during circle detection using hough transform|
+        |hough_miny|int|Miniumum distance in y direction between 2 peaks during circle detection using hough transform|
+        |hough_thresh|int|threshold of peak-intensity during circle detection using hough transform as fraction of maximum value|
 
         ## Output
 
@@ -253,9 +270,9 @@ class spot:
         histeq_img=skimage.filters.rank.equalize(skimage.util.img_as_ubyte(gray_img),skimage.morphology.disk(50))
         edges=skimage.feature.canny(
         image=histeq_img,
-        sigma=10,
-        low_threshold=0.001,
-        high_threshold=0.001
+        sigma=canny_sig,
+        low_threshold=canny_lowthresh,
+        high_threshold=canny_highthresh
         )
 
         # Range of Radii that are tested during inital spotdetection.
@@ -267,9 +284,9 @@ class spot:
             hspaces=spot_hough,
             radii=tested_radii,
             total_num_peaks=spot_nr,
-            min_xdistance=70,
-            min_ydistance=70,
-            threshold=0.3*spot_hough.max()
+            min_xdistance=hough_minx,
+            min_ydistance=hough_miny,
+            threshold=hough_thresh*spot_hough.max()
             )
         
         spotlist=[spot(x,y,rad) for x,y,rad in zip(spot_x,spot_y,spot_rad)]
@@ -619,7 +636,7 @@ class halo:
         self.rad=rad
 
     @staticmethod
-    def detect(img):
+    def detect(img,canny_sig:float=3.52941866,canny_lowthresh:float=44.78445877,canny_highthresh:float=44.78445877,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.38546213):
         """
         ## Description
 
@@ -630,6 +647,12 @@ class halo:
         |Parameter|Type|Description|
         |---|---|---|
         |img|np.array|Grayscale np.array of image to be analyzed|
+        |canny_sig|int|Sigma value for gaussian blur during canny edge detection|
+        |canny_lowthresh|float|Low threshold for canny edge detection|
+        |canny_highthres|float|High threshold for canny edge detection|
+        |hough_minx|int|Miniumum distance in x direction between 2 peaks during circle detection using hough transform|
+        |hough_miny|int|Miniumum distance in y direction between 2 peaks during circle detection using hough transform|
+        |hough_thresh|int|threshold of peak-intensity during circle detection using hough transform as fraction of maximum value|
 
         ## Output
 
@@ -644,16 +667,16 @@ class halo:
         halo_img[halo_mask]=0
 
         # Canny edge detection and follow up circle detection using hough transform.
-        halo_edge=skimage.feature.canny(halo_img,3.52941866,44.78445877,44.78445877)
+        halo_edge=skimage.feature.canny(halo_img,canny_sig,canny_lowthresh,canny_highthresh)
         halo_radii=np.arange(40,70) # Radii tested for.
         halo_hough=skimage.transform.hough_circle(halo_edge,halo_radii)
 
         h_accum,h_x,h_y,h_radii=skimage.transform.hough_circle_peaks(
             halo_hough,
             halo_radii,
-            min_xdistance=70,
-            min_ydistance=70,
-            threshold=0.38546213*halo_hough.max()
+            min_xdistance=hough_minx,
+            min_ydistance=hough_miny,
+            threshold=hough_thresh*halo_hough.max()
             )
         
         halo_list=[halo(x,y,rad) for x,y,rad in zip(h_x,h_y,h_radii)]
