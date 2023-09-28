@@ -3,10 +3,11 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.patheffects as pe
 import numpy as np
+import pandas as pd
 from pathlib import Path
-import math
 import microspot_util as msu
 import microspot_util.streamlit as mst
+import microspot_util.plots as plots
 
 mst.page_setup()
 
@@ -57,9 +58,10 @@ if inputfile:
 
 col1,col2=st.columns([0.2,0.7])
 with col1:    
-    submit=st.button("Start Analysis!",key="start_analysis")
+    if st.button("Start Analysis!",type="primary"):
+        st.session_state["analyze"]=True
 
-if submit:
+if st.session_state["analyze"]:
     try:
         # Inital spot-detection.
         init_spots=msu.spot.detect(raw_img,grid_props["spot_nr"])
@@ -85,16 +87,12 @@ if submit:
 
     st.markdown("## Results")
     
-    with st.expander("Detected-Grid"):
+    with st.expander("Detected Grid"):
         col1,col2=st.columns(2)
         with col1:
             # Display the grid.
             fig,ax=plt.subplots()
-            ax.imshow(raw_img)
-            for item in hor_line+vert_line:
-                ax.axline((0,item.y_int), slope=item.slope,c="r")
-            ax.set(ylim=[raw_img.shape[0],0],xlim=[0,raw_img.shape[1]])
-            ax.axis("off")
+            plots.plot_grid(fig,ax,raw_img,hor_line+vert_line)
             
             st.pyplot(fig)
         with col2: 
@@ -148,64 +146,35 @@ if submit:
 
     with tab1:
         fig,ax=plt.subplots()
-        ax.imshow(raw_img)
-        ax.scatter(sort_spot.loc[sort_spot["note"]=="Initial Detection","x_coord"],sort_spot.loc[sort_spot["note"]=="Initial Detection","y_coord"],marker="2",c="k",label="Kept Spots")
-        ax.scatter(sort_spot.loc[sort_spot["note"]=="Backfilled","x_coord"],sort_spot.loc[sort_spot["note"]=="Backfilled","y_coord"],marker="2",c="r",label="Backfilled Spots")
-        ax.set(title="Detected Spots and Halos",
-            ylabel="Row",
-            xlabel="Column",
-            yticks=sort_spot[sort_spot["column"]==grid_props["columns"]["bounds"][0]]["y_coord"],
-            yticklabels=sort_spot[sort_spot["column"]==grid_props["columns"]["bounds"][0]]["row_name"],
-            xticks=sort_spot[sort_spot["row"]==grid_props["rows"]["bounds"][0]]["x_coord"],
-            xticklabels=sort_spot[sort_spot["row"]==grid_props["rows"]["bounds"][0]]["column"],
-            )
-        ax.spines[["right","left","top","bottom"]].set_visible(False)
-        ax.tick_params(axis=u'both', which=u'both',length=0,labelsize=7)
-
-        # Adding legend handles for Text
-        handles,lables=ax.get_legend_handles_labels()
-        patch=mpl.patches.Patch(facecolor="white",edgecolor="k",linewidth=0.4,label="Halo Radii")
-        handles.append(patch)
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0 + box.height * 0.1,
-                        box.width, box.height * 0.9])
-        ax.legend(handles=handles,loc='upper center', bbox_to_anchor=(0.5, -0.1),
-                fancybox=True,ncol=5)
-
-        # Displaying all detected Halos with their respective radii.
-        halo_df=sort_spot[sort_spot["halo"]>0]
-        for idx in halo_df.index:
-            ax.text(halo_df.loc[idx,"x_coord"]+12, halo_df.loc[idx,"y_coord"]-9, f'{halo_df.loc[idx,"halo"]:.0f}',c="white",size=7,path_effects=[pe.withStroke(linewidth=1, foreground="k")])
-        
+        plots.plot_result(fig,ax,raw_img,sort_spot,grid_props)        
         st.pyplot(fig)
 
-    sort_df=msu.spot.create_df(sort_spots)
     with tab2:
-        st.dataframe(sort_df)
+        st.dataframe(sort_spot)
 
     with tab3:
-        heatmap=sort_df.pivot_table(index="row_name",columns="column",values="spot_intensity")
-
         # Display Image and corresponding Heatmap
         fig,ax=plt.subplots()
-        htmp=ax.pcolormesh(heatmap.iloc[::-1],edgecolors="white",linewidth=4)
-        ax.set(title="Heatmap of Spot-Intensities",
-                aspect="equal",
-                ylabel="Row",
-                xlabel="Column",
-                yticks=np.array(range(1,len(heatmap)+1))-0.5,
-                xticks=np.array(range(1,len(heatmap.columns)+1))-0.5,
-                yticklabels=heatmap.index[::-1],
-                xticklabels=heatmap.columns
-                )
-        ax.spines[["right","left","top","bottom"]].set_visible(False)
-        ax.tick_params(axis=u'both', which=u'both',length=0)
-        ax.scatter(sort_df.loc[sort_df["halo"]>0,"column"]-(math.floor((grid_props["columns"]["bounds"][0])/10)*10)-0.5,grid_props["rows"]["bounds"][-1]+0.5-sort_df.loc[sort_df["halo"]>0,"row"],marker="s", c="red",label="Detected Halos")
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0 + box.height * 0.1,
-                        box.width, box.height * 0.9])
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1),
-                fancybox=True,ncol=5)
-        fig.colorbar(htmp,ax=ax,label="Spot-Intensity",shrink=0.5)
-
+        plots.plot_heatmap(fig,ax,sort_spot,grid_props)
         st.pyplot(fig)
+    
+    st.info("Please name your Data before adding it to the Session!")
+
+    col1,col2=st.columns([0.3,0.7])
+
+    with col2:
+        with st.form("Add to Session"):
+            c1,c2=st.columns(2)
+            with c2:
+                data_name=st.text_input("Name your Data",placeholder="Name your Data",label_visibility="collapsed")
+                
+            with c1:
+                if st.form_submit_button("Add Data to Session",type="primary",use_container_width=True):
+                    if len(data_name)>0:
+                        add_data=pd.Series({"Data":sort_spot,"Name":data_name,"Select":True})
+                        st.session_state["data"]=pd.concat([st.session_state["data"],add_data.to_frame().T],ignore_index=True)
+                        st.rerun()
+
+    with col1:
+        table=mst.convert_df(sort_spot)
+        st.download_button(label="Download Spot-Data as .csv",data=table,mime="text/csv")
