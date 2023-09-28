@@ -14,7 +14,9 @@ import pandas as pd
 import skimage
 import numpy as np
 from pathlib import Path
+import streamlit as st
 
+@st.cache_data
 def conv_gridinfo(point1:str,point2:str,conv_dict:dict) -> dict:
     """
     ## Description:
@@ -58,6 +60,7 @@ def conv_gridinfo(point1:str,point2:str,conv_dict:dict) -> dict:
     
     return grid_properties
 
+@st.cache_data
 def prep_img(filename:Path,invert:bool=False) -> np.array:
     """
     ## Description
@@ -157,7 +160,6 @@ class spot:
             if np.linalg.norm(np.array((h.x,h.y))-np.array((self.x,self.y)))<dist_thresh:
                 self.halo=h.rad
             
-
     def get_intensity(self,img:np.array) -> None:
         """
         ## Description
@@ -182,7 +184,7 @@ class spot:
     
         except:
             print(f"Spot at Coordinates ({self.x}, {self.y}) could not be evaluated: (Partly) Out of Bounds.")
-        
+    
     def append_df(self,spot_df:pd.DataFrame) -> pd.DataFrame:
         """
         ## Description
@@ -243,6 +245,7 @@ class spot:
         return image
 
     @staticmethod
+    @st.cache_data
     def detect(gray_img:np.array,spot_nr:int,canny_sig:int=10,canny_lowthresh:float=0.001,canny_highthresh:float=0.001,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.3) -> list:
         """
         ## Description
@@ -569,6 +572,7 @@ class gridline:
         return point
     
     @staticmethod
+    @st.cache_data
     def detect(img:np.array,max_tilt:int=5) -> list:
         """
         ## Description
@@ -636,6 +640,7 @@ class halo:
         self.rad=rad
 
     @staticmethod
+    @st.cache_data
     def detect(img,canny_sig:float=3.52941866,canny_lowthresh:float=44.78445877,canny_highthresh:float=44.78445877,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.38546213):
         """
         ## Description
