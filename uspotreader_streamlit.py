@@ -11,7 +11,7 @@ import microspot_util.plots as plots
 
 mst.page_setup()
 
-st.image(r"logo_µspotreader.png")
+st.image(r"assets\logo_µspotreader.png")
 
 choose_input=st.selectbox("File upload:",["Upload Image","Example for Testing"])
 

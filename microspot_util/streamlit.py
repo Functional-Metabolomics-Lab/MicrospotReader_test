@@ -4,7 +4,7 @@ import pandas as pd
 def page_setup():
     st.set_page_config(
         page_title="Microspot Reader",
-        page_icon="logo_µspotreader.png",
+        page_icon=r"assets\Logo_notext.png",
         initial_sidebar_state="auto",
         menu_items=None
         )
@@ -28,7 +28,7 @@ def page_setup():
 
             with c1: 
                 if st.form_submit_button("Submit Changes"):
-                    pass
+                    st.session_state["data"]=st.session_state["data"]
 
 
 def v_space(n, col=None):
