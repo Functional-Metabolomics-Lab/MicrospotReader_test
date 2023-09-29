@@ -1,6 +1,11 @@
 import streamlit as st
 import pandas as pd
 
+states={"analyze":False,"session_data":pd.DataFrame(columns=["Data","Name","Select"]),"init_analysis":True,"img":None,"grid":None,"current_data":None,"edit":None,"change_warning":False}
+
+def set_analyze_True():
+    st.session_state["analyze"]=True
+
 def page_setup():
     st.set_page_config(
         page_title="Microspot Reader",
@@ -9,27 +14,40 @@ def page_setup():
         menu_items=None
         )
     
-    if "analyze" not in st.session_state:
-        st.session_state["analyze"]=False
+    # with st.sidebar:
+    #     st.image(r"assets\logo_µspotreader.png")
+    
+    for name,state in states.items():
+        if name not in st.session_state:
+            st.session_state[name]=state
 
-    if "data" not in st.session_state:
-        st.session_state["data"]=pd.DataFrame(columns=["Data","Name","Select"])
+def apply_datachange():
+    st.session_state["session_data"]=st.session_state["edit"]
+    st.session_state["change_warning"]=False
 
+def del_sessiondata():
+    st.session_state["session_data"]=st.session_state["edit"]
+    st.session_state["session_data"]=st.session_state["session_data"].loc[st.session_state["edit"]["Select"]==False]
+    st.session_state["edit"]=st.session_state["edit"].loc[st.session_state["edit"]["Select"]==False]
+    st.session_state["change_warning"]=False
+
+def datachange_warning():
+    st.session_state["change_warning"]=True
+
+def datainfo():
     with st.sidebar:
-        with st.form("Data in Session"):
-            st.markdown("## Data in Session:")
-            st.session_state["data"]=st.data_editor(st.session_state["data"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"Data":None},use_container_width=True,hide_index=True,)
+        st.caption("Image data in current Session:")
+        
+        if st.session_state["change_warning"]==True:
+            st.warning("Changes have not been applied yet!")
 
-            c1,c2=st.columns(2)
-            with c2:
-                if st.form_submit_button("Delete Selection"):
-                    st.session_state["data"]=st.session_state["data"].loc[st.session_state["data"]["Select"]==False]
-                    st.rerun()
+        st.session_state["edit"]=st.data_editor(st.session_state["session_data"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"Data":None},use_container_width=True,hide_index=True,on_change=datachange_warning)
 
-            with c1: 
-                if st.form_submit_button("Submit Changes"):
-                    st.session_state["data"]=st.session_state["data"]
-
+        col1,col2=st.columns(2)
+        with col2:
+            st.button("Delete Selection",on_click=del_sessiondata,use_container_width=True)
+        with col1:        
+            st.button("Apply Changes",on_click=apply_datachange,use_container_width=True,type="primary")
 
 def v_space(n, col=None):
     for _ in range(n):

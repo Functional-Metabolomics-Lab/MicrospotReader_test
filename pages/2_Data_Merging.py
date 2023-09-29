@@ -11,3 +11,5 @@ import microspot_util.streamlit as mst
 import microspot_util.plots as plots
 
 mst.page_setup()
+
+mst.datainfo()
