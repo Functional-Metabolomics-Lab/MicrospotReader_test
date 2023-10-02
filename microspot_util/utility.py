@@ -326,6 +326,31 @@ class spot:
         return spot_df
     
     @staticmethod
+    def df_to_list(df:pd.DataFrame)->list:
+        """
+        ## Description
+
+        Creates a list of spot-objects from a DataFrame created by the spot.create_df method.
+
+        ## Input
+
+        |Parameter|Type|Description|
+        |---|---|---|
+        |df|DataFrame|DataFrame created by the spot.create_df method|
+
+        ## Output
+        List of spot-objects
+        """
+        
+        spot_list=[]
+        
+        for idx in df.index:
+            spot_list.append(spot(df.loc[idx,"x_coord"],df.loc[idx,"y_coord"],df.loc[idx,"radius"],df.loc[idx,"halo"],df.loc[idx,"spot_intensity"],df.loc[idx,"note"],df.loc[idx,"row"],df.loc[idx,"column"],df.loc[idx,"row_name"]))
+        
+        return spot_list
+
+
+    @staticmethod
     def backfill(spot_list:list,x,y):
         """
         ## Description

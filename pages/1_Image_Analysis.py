@@ -28,14 +28,13 @@ with st.sidebar:
 
         if add:
             if len(data_name)>0:
-                add_data=pd.Series({"Data":st.session_state["current_data"],"Name":data_name,"Select":True})
-                st.session_state["session_data"]=pd.concat([st.session_state["session_data"],add_data.to_frame().T],ignore_index=True)
+                mst.add_sessiondata(data_name)
             else:
                 st.warning("Please enter a Name!")        
 
 mst.datainfo()
 
-st.image(r"assets\logo_µspotreader.png")
+st.markdown("# Image Analysis")
 
 # Dictionaries to convert Row-Letters into Row-Numbers and vice versa.
 row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}
