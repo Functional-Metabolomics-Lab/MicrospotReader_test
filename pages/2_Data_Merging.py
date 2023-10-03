@@ -45,6 +45,6 @@ if st.session_state["merge_state"]==True:
     merged_spots=[]
     for spotlist in data_list:
         merged_spots.extend(msu.spot.df_to_list(spotlist))
-        merged_spots.sort(key=lambda x: x.row+(x.col/1000))
+        merged_spots.sort(key=lambda x: x.row*1000+(x.row%2)*x.col-((x.row+1)%2)*x.col)
 
     st.dataframe(msu.spot.create_df(merged_spots))
