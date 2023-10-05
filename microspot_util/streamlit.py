@@ -1,7 +1,22 @@
 import streamlit as st
 import pandas as pd
 
-states={"analyze":False,"session_data":{},"init_analysis":True,"img":None,"grid":None,"current_data":None,"edit":None,"change_warning":False,"mergedata_loaded":True,"merge_state":False,"session_df":pd.DataFrame(columns=["Name","Select","id"]),"session_id":0}
+states={"analyze":False,
+        "img_data":{},
+        "init_analysis":True,
+        "img":None,
+        "grid":None,
+        "current_img":None,
+        "edit_img":None,
+        "change_warning":False,
+        "mergedata_loaded":True,
+        "merge_state":False,
+        "img_df":pd.DataFrame(columns=["Name","Select","id"]),
+        "session_id":0,
+        "edit_merge":None,
+        "merge_data":{},
+        "merge_df":pd.DataFrame(columns=["Name","Select","id"]),"merge_data":{},
+        "current_merge":None}
 
 def set_analyze_True():
     st.session_state["analyze"]=True
@@ -18,20 +33,26 @@ def page_setup():
         if name not in st.session_state:
             st.session_state[name]=state
 
-def add_sessiondata(data):
-    st.session_state["session_data"][st.session_state["session_id"]]=st.session_state["current_data"]
-    add_data=pd.Series({"Name":data,"Select":False,"id":st.session_state["session_id"]})
-    st.session_state["session_df"]=pd.concat([st.session_state["session_df"],add_data.to_frame().T],ignore_index=True)
+def add_imgdata(data_name):
+    st.session_state["img_data"][st.session_state["session_id"]]=st.session_state["current_img"]
+    add_data=pd.Series({"Name":data_name,"Select":False,"id":st.session_state["session_id"]})
+    st.session_state["img_df"]=pd.concat([st.session_state["img_df"],add_data.to_frame().T],ignore_index=True)
     st.session_state["session_id"]+=1
 
+def add_mergedata(data_name):
+    st.session_state["merge_data"][st.session_state["session_id"]]=st.session_state["current_merge"]
+    add_data=pd.Series({"Name":data_name,"Select":False,"id":st.session_state["session_id"]})
+    st.session_state["merge_df"]=pd.concat([st.session_state["merge_df"],add_data.to_frame().T],ignore_index=True)
+    st.session_state["session_id"]+=1
+    
 def apply_datachange():
-    st.session_state["session_df"]=st.session_state["edit"]
+    st.session_state["img_df"]=st.session_state["edit_img"]
     st.session_state["change_warning"]=False
 
 def del_sessiondata():
-    st.session_state["session_df"]=st.session_state["session_df"].loc[st.session_state["edit"]["Select"]==False]
+    st.session_state["img_df"]=st.session_state["img_df"].loc[st.session_state["edit_img"]["Select"]==False]
 
-    st.session_state["session_data"]={st.session_state["session_df"].loc[idx,"id"]: st.session_state["session_data"][st.session_state["session_df"].loc[idx,"id"]] for idx in st.session_state["session_df"].index}
+    st.session_state["img_data"]={st.session_state["img_df"].loc[idx,"id"]: st.session_state["img_data"][st.session_state["img_df"].loc[idx,"id"]] for idx in st.session_state["img_df"].index}
 
     st.session_state["change_warning"]=False
 
@@ -40,12 +61,18 @@ def datachange_warning():
 
 def datainfo():
     with st.sidebar:
-        st.caption("Image data in current Session:")
+        st.markdown("### Data in current Session")
         
         if st.session_state["change_warning"]==True:
             st.warning("Changes have not been applied yet!")
+        
+        t1,t2=st.tabs(["Image-Data","Merged Data"])
 
-        st.session_state["edit"]=st.data_editor(st.session_state["session_df"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"id":None},use_container_width=True,hide_index=True,on_change=datachange_warning)
+        with t1:
+            st.session_state["edit_img"]=st.data_editor(st.session_state["img_df"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"id":None},use_container_width=True,hide_index=True,on_change=datachange_warning,key="1")
+
+        with t2: 
+            st.session_state["edit_merge"]=st.data_editor(st.session_state["merge_df"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"id":None},use_container_width=True,hide_index=True,on_change=datachange_warning,key="2")
 
         col1,col2=st.columns(2)
         with col2:

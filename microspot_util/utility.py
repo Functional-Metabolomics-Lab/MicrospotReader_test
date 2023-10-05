@@ -118,6 +118,7 @@ class spot:
     |row|int|Row-Index of spot in grid|
     |col|int|Column-Index of spot in grid|
     |row_name|str|Name of Row|
+    |rt|float|Retention Time of Spot in s|
 
     ## Class Attributes
 
@@ -132,8 +133,9 @@ class spot:
     |row|Row-Index of spot in grid|
     |col|Column-Index of spot in grid|
     |row_name|Name of Row|
+    |rt|Retention Time of Spot in s|
     """
-    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan) -> None:
+    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan) -> None:
         self.x=x
         self.y=y
         self.rad=rad
@@ -143,6 +145,7 @@ class spot:
         self.row=row
         self.col=col
         self.row_name=row_name
+        self.rt=np.nan
     
     def assign_halo(self,halo_list:list,dist_thresh:float=14.73402725) -> None:
         """
@@ -209,7 +212,8 @@ class spot:
                                              "radius":self.rad,
                                              "halo":self.halo,
                                              "spot_intensity:":self.int,
-                                             "note":self.note}).to_frame().T],ignore_index=True)
+                                             "note":self.note,
+                                             "RT":self.rt}).to_frame().T],ignore_index=True)
         return new_df
 
     def draw_spot(self,image:np.array,value:float=1,radius:int=None) -> np.array:
@@ -297,6 +301,64 @@ class spot:
         return spotlist
     
     @staticmethod
+    def annotate_RT(spot_list:list,start:float,spot_time:float)->list:
+        """
+        ## Description
+
+        Annotates a list of spot-objects with Retention-Times.
+
+        ## Input
+
+        |Parameter|Type|Description|
+        |---|---|---|
+        |spot_list|list|List of spot-objects to be sorted|
+        |start|float|Timepoint at which spotting was started in seconds|
+        |spot_time|float|Time each spot was spotted for|
+
+        ## Output
+
+        RT-annotated list of spot-objects
+        """
+
+        for s,rt in zip(spot_list,range(start,start+len(spot_list)*spot_time,spot_time)):
+            s.rt=rt
+    
+    @staticmethod
+    def sort_list(spot_list:list,serpentine:bool=False,inplace:bool=False)->list:
+        """
+        ## Description
+
+        Sorts a list of spot-objects by rows and columns.
+        If serpentine is set to true even rows are sorted in a descending order.
+
+        ## Input
+
+        |Parameter|Type|Description|
+        |---|---|---|
+        |spot_list|list|List of spot-objects to be sorted|
+        |serpentine|bool|True if even rows should be sorted in a descending order, False if even rows should be sorted in an ascending order|
+        |inplace|bool|True if list should be sorted in place|
+
+        ## Output
+
+        Sorted list of spot-objects
+        """
+
+        if inplace:
+            if serpentine:
+                spot_list.sort(key=lambda x: x.row*1000+(x.row%2)*x.col-((x.row+1)%2)*x.col)
+            else:
+                spot_list.sort(key=lambda x: x.row*1000+x.col)
+        else:
+            if serpentine:
+                sort=sorted(spot_list,key=lambda x: x.row*1000+(x.row%2)*x.col-((x.row+1)%2)*x.col)
+            else:
+                sort=sorted(spot_list,key=lambda x: x.row*1000+x.col)
+            
+            return sort
+
+    
+    @staticmethod
     def create_df(spot_list:list) -> pd.DataFrame:
         """
         ## Description
@@ -322,7 +384,8 @@ class spot:
                               "radius":[i_spot.rad for i_spot in spot_list],
                               "halo":[i_spot.halo for i_spot in spot_list],
                               "spot_intensity":[i_spot.int for i_spot in spot_list],
-                              "note":[i_spot.note for i_spot in spot_list]})
+                              "note":[i_spot.note for i_spot in spot_list],
+                              "RT":[i_spot.rt for i_spot in spot_list]})
         return spot_df
     
     @staticmethod
@@ -345,7 +408,7 @@ class spot:
         spot_list=[]
         
         for idx in df.index:
-            spot_list.append(spot(df.loc[idx,"x_coord"],df.loc[idx,"y_coord"],df.loc[idx,"radius"],df.loc[idx,"halo"],df.loc[idx,"spot_intensity"],df.loc[idx,"note"],df.loc[idx,"row"],df.loc[idx,"column"],df.loc[idx,"row_name"]))
+            spot_list.append(spot(df.loc[idx,"x_coord"],df.loc[idx,"y_coord"],df.loc[idx,"radius"],df.loc[idx,"halo"],df.loc[idx,"spot_intensity"],df.loc[idx,"note"],df.loc[idx,"row"],df.loc[idx,"column"],df.loc[idx,"row_name"],df.loc[idx,"RT"]))
         
         return spot_list
 

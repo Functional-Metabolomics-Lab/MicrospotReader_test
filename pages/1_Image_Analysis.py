@@ -16,7 +16,7 @@ mst.page_setup()
 with st.sidebar:
     if st.button("Start New Analysis!",use_container_width=True,type="primary"):
         st.session_state["analyze"]=False
-        st.session_state["current_data"]=None
+        st.session_state["current_img"]=None
 
     with st.form("Add to Session"):
         c1,c2=st.columns(2)
@@ -24,11 +24,11 @@ with st.sidebar:
             data_name=st.text_input("Name your Data",placeholder="Name your Data",label_visibility="collapsed")
                     
         with c1:
-            add=st.form_submit_button("Add current Data to Session",type="primary",use_container_width=True,disabled=not st.session_state["analyze"])
+            add=st.form_submit_button("Add Image-Data to Session",type="primary",use_container_width=True,disabled=not st.session_state["analyze"])
 
         if add:
             if len(data_name)>0:
-                mst.add_sessiondata(data_name)
+                mst.add_imgdata(data_name)
             else:
                 st.warning("Please enter a Name!")        
 
@@ -146,25 +146,26 @@ if st.session_state["analyze"]==True:
     tab1,tab2,tab3,tab4=st.tabs(["Image","Table","Heatmap", "Grid"])
 
     # Display the corrected and sorted spotlist.
-    st.session_state["current_data"]=msu.spot.create_df(sort_spots)
+    st.session_state["current_img"]=sort_spots
+    df=msu.spot.create_df(sort_spots)
     
 
     with tab1:
         col1,col2=st.columns([0.6,0.4])
         with col1:
             fig,ax=plt.subplots()
-            plots.plot_result(fig,ax,st.session_state["img"],st.session_state["current_data"],st.session_state["grid"])        
+            plots.plot_result(fig,ax,st.session_state["img"],df,st.session_state["grid"])        
             st.pyplot(fig)
 
     with tab2:
-        st.dataframe(st.session_state["current_data"])
+        st.dataframe(df)
 
     with tab3:
         col1,col2=st.columns([0.6,0.4])
         with col1:
             # Display Image and corresponding Heatmap
             fig,ax=plt.subplots()
-            plots.plot_heatmap(fig,ax,st.session_state["current_data"],st.session_state["grid"])
+            plots.plot_heatmap(fig,ax,df,st.session_state["grid"])
             st.pyplot(fig)
     
     with tab4:
@@ -182,5 +183,5 @@ if st.session_state["analyze"]==True:
             st.markdown("A faulty grid leads to errors during spot detection and can influence the results negatively. The most frequent reason for faulty grids is a noisy background in the submitted image.")
 
 
-    table=mst.convert_df(st.session_state["current_data"])
+    table=mst.convert_df(df)
     st.download_button(label="Download Spot-Data as .csv",data=table,mime="text/csv")
