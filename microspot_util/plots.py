@@ -30,7 +30,7 @@ def plot_result(figure,axs,img,df,g_prop):
     axs.tick_params(axis=u'both', which=u'both',length=0,labelsize=7)
 
     # Adding legend handles for Text
-    handles,lables=axs.get_legend_handles_labels()
+    handles,labels=axs.get_legend_handles_labels()
     patch=mpl.patches.Patch(facecolor="white",edgecolor="k",linewidth=0.4,label="Halo Radii")
     handles.append(patch)
     box = axs.get_position()
@@ -65,3 +65,12 @@ def plot_heatmap(figure,axs,df,g_prop):
     axs.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1),
             fancybox=True,ncol=5)
     figure.colorbar(htmp,ax=axs,label="Spot-Intensity",shrink=0.5)
+
+def plot_chromatogram(figure,axs,df):
+    axs.plot(df["RT"],df["spot_intensity"],c="k",linewidth=1)
+    axs.set(
+        title="Bioactivity-Chromatogram",
+        ylabel="Spot-Intensity [a.u.]",
+        xlabel="Time [s]",
+        xlim=[df["RT"].min(),df["RT"].max()]
+        )

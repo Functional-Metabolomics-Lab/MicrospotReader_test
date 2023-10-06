@@ -79,7 +79,40 @@ if st.session_state["merge_state"]==True:
 
     df=msu.spot.create_df(merged_spots)
     st.session_state["current_merge"]=df
-    st.dataframe(df)
     
+    # Extract information on first and last spot
+    first_spot=merged_spots[0].row_name+str(merged_spots[0].col)
+    last_spot=merged_spots[-1].row_name+str(merged_spots[-1].col)
+
+    # Dictionaries to convert Row-Letters into Row-Numbers and vice versa.
+    row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}
+    row_conv_inv={v:k for k,v in row_conv.items()}
+
+    # Get the grid-properties of the spotlist.
+    grid_props=msu.conv_gridinfo(first_spot,last_spot,row_conv)
+
+    if st.session_state["addRT"]==True:
+        t1,t2,t3=st.tabs(["Merged Data Table","Heatmap","Chromatogram"])
+        
+        with t3:
+            fig,ax=plt.subplots()
+            plots.plot_chromatogram(fig,ax,df)
+            st.pyplot(fig)
+
+    else:
+        t1,t2=st.tabs(["Merged Data Table","Heatmap"])
+
+    with t1:
+        st.dataframe(df)
+
+    with t2:
+        c1,c2=st.columns(2)
+        with c1:
+            fig,ax=plt.subplots()
+            plots.plot_heatmap(fig,ax,df,grid_props)
+            st.pyplot(fig)
+        with c2:
+            st.markdown("## Heatmap of Merged Data")
+
     table=mst.convert_df(df)
     st.download_button(label="Download Merged Data as .csv",data=table,mime="text/csv")
