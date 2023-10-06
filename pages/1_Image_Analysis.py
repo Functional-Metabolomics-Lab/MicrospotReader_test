@@ -54,7 +54,7 @@ if st.session_state["analyze"]==False:
 
     # Example image
     if choose_input=="Example for Testing":
-        inputfile=Path(r"test_images\edge_halo.tif")
+        inputfile=Path(r"test_images/edge_halo.tif")
 
     # File uploader for custom image files
     elif choose_input=="Upload Image":

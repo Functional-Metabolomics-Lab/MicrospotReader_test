@@ -27,7 +27,7 @@ def page_setup():
     # Sets title and site icon
     st.set_page_config(
         page_title="Microspot Reader",
-        page_icon=r"assets\Logo_notext.png",
+        page_icon=r"assets/Logo_notext.png",
         initial_sidebar_state="auto",
         menu_items=None
         )
