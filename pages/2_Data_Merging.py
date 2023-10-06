@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from matplotlib import pyplot as plt
-import numpy as np
 import microspot_util.plots as plots
 import microspot_util.streamlit as mst
 import microspot_util as msu
