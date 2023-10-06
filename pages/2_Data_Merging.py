@@ -43,9 +43,12 @@ if choose_input=="Use Selection in current Session":
 
 elif choose_input=="Upload Data":
     
-    upload_list=st.file_uploader("Upload all .csv files.","csv",accept_multiple_files=True)
+    upload_list=st.file_uploader("Upload all .csv files.","csv",accept_multiple_files=True,on_change=mst.reset_merge)
+    print(upload_list)
 
-    data_list=[msu.spot.create_df(pd.read_csv(item)) for item in upload_list]
+    data_list=[msu.spot.df_to_list(pd.read_csv(item)) for item in upload_list]
+
+    # data_list=[msu.spot.create_df(pd.read_csv(item)) for item in upload_list]
 
     if len(data_list)>0:
         st.session_state["mergedata_loaded"]=False
@@ -56,23 +59,23 @@ elif choose_input=="Upload Data":
 c1,c2=st.columns(2)
 
 with c1:
-    st.toggle("Add Retention-Time",key="addRT")
-    t_0=st.number_input("Start Time [s]",value=0,disabled=not st.session_state["addRT"])
-    test=st.button("Merge Data",disabled=st.session_state["mergedata_loaded"],type="primary",on_click=mst.merge_settings)
+    st.toggle("Add Retention-Time",key="addRT",on_change=mst.reset_merge)
+    t_0=st.number_input("Start Time [s]",value=0,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
+    st.button("Merge Data",disabled=st.session_state["mergedata_loaded"],type="primary",on_click=mst.merge_settings)
 
 with c2:
-    st.toggle("Serpentine Path",key="serpentine")
-    d_t=st.number_input("Time per spot [s]",value=1,disabled=not st.session_state["addRT"])
+    st.toggle("Serpentine Path",key="serpentine",on_change=mst.reset_merge)
+    d_t=st.number_input("Time per spot [s]",value=1,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
     
 if st.session_state["merge_state"]==True:
     merged_spots=[]
     for spotlist in data_list:
         merged_spots.extend(spotlist)
     
-    merge_sorted=msu.spot.sort_list(merged_spots,serpentine=st.session_state["serpentine"],inplace=False)
+    msu.spot.sort_list(merged_spots,serpentine=st.session_state["serpentine"],inplace=True)
 
     if st.session_state["addRT"]==True:
-        msu.spot.annotate_RT(merge_sorted,t_0,d_t)
+        msu.spot.annotate_RT(merged_spots,t_0,d_t)
 
     df=msu.spot.create_df(merged_spots)
     st.session_state["current_merge"]=df
@@ -80,5 +83,3 @@ if st.session_state["merge_state"]==True:
     
     table=mst.convert_df(df)
     st.download_button(label="Download Merged Data as .csv",data=table,mime="text/csv")
-
-    st.session_state["merge_state"]=False

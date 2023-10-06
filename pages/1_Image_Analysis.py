@@ -45,13 +45,9 @@ if st.session_state["analyze"]==False:
 
     if choose_input=="Example for Testing":
         inputfile=Path(r"test_images\edge_halo.tif")
-        first_spotval="A1"
-        last_spotval="P20"
 
     elif choose_input=="Upload Image":
         inputfile=st.file_uploader("Upload Microspot Image",["png","jpg","tif"])
-        first_spotval=None
-        last_spotval=None
     
     if inputfile:
         st.markdown("## Image to be analyzed")
@@ -59,8 +55,8 @@ if st.session_state["analyze"]==False:
         with col2:
             st.caption("Settings:")
             invert=st.toggle("Invert grayscale Image",value=True)
-            first_spot=st.text_input("Index of First Spot",value=first_spotval,placeholder="A1")
-            last_spot=st.text_input("Index of Last Spot",value=last_spotval,placeholder="P20")
+            first_spot=st.text_input("Index of First Spot",placeholder="A1")
+            last_spot=st.text_input("Index of Last Spot",placeholder="P20")
             
             if first_spot and last_spot:
                 st.session_state["init_analysis"]=False

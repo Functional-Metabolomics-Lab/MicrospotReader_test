@@ -65,14 +65,12 @@ def datainfo():
         
         if st.session_state["change_warning"]==True:
             st.warning("Changes have not been applied yet!")
-        
-        t1,t2=st.tabs(["Image-Data","Merged Data"])
 
-        with t1:
-            st.session_state["edit_img"]=st.data_editor(st.session_state["img_df"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"id":None},use_container_width=True,hide_index=True,on_change=datachange_warning,key="1")
+        st.caption("Image-Data")
+        st.session_state["edit_img"]=st.data_editor(st.session_state["img_df"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"id":None},use_container_width=True,hide_index=True,on_change=datachange_warning,key="1")
 
-        with t2: 
-            st.session_state["edit_merge"]=st.data_editor(st.session_state["merge_df"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"id":None},use_container_width=True,hide_index=True,on_change=datachange_warning,key="2")
+        st.caption("Merged Data")
+        st.session_state["edit_merge"]=st.data_editor(st.session_state["merge_df"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"id":None},use_container_width=True,hide_index=True,on_change=datachange_warning,key="2")
 
         col1,col2=st.columns(2)
         with col2:
@@ -96,3 +94,6 @@ def mergedata_loaded():
 
 def merge_settings():
     st.session_state["merge_state"]=True
+
+def reset_merge():
+    st.session_state["merge_state"]=False

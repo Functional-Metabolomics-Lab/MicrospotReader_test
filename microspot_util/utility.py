@@ -319,8 +319,8 @@ class spot:
 
         RT-annotated list of spot-objects
         """
-
-        for s,rt in zip(spot_list,range(start,start+len(spot_list)*spot_time,spot_time)):
+        for s,rt in zip(spot_list,range(start,start+len
+        (spot_list)*spot_time,spot_time)):
             s.rt=rt
     
     @staticmethod
@@ -344,7 +344,7 @@ class spot:
         Sorted list of spot-objects
         """
 
-        if inplace:
+        if inplace==True:
             if serpentine:
                 spot_list.sort(key=lambda x: x.row*1000+(x.row%2)*x.col-((x.row+1)%2)*x.col)
             else:
