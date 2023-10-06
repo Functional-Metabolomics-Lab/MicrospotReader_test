@@ -131,7 +131,6 @@ if st.session_state["analyze"]==True:
 
     # Detect Halos using the halo.detect method.
     halos=msu.halo.detect(st.session_state["img"])
-    halo_df=msu.halo.create_df(halos)
 
     # Assign halos to their spot.
     for s in sort_spots:
@@ -177,7 +176,6 @@ if st.session_state["analyze"]==True:
             mst.v_space(1)
             st.markdown("Please check whether the gridlines match the Spots!")
             st.markdown("A faulty grid leads to errors during spot detection and can influence the results negatively. The most frequent reason for faulty grids is a noisy background in the submitted image.")
-
 
     table=mst.convert_df(df)
     st.download_button(label="Download Spot-Data as .csv",data=table,mime="text/csv")
