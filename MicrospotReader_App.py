@@ -15,6 +15,4 @@ mst.page_setup()
 
 mst.datainfo()
 
-st.image(r"assets/logo_uspotreader.png")
-
 st.title("Under Construction")
