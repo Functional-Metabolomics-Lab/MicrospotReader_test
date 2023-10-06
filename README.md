@@ -1,4 +1,4 @@
-![image](assets/logo_µspotreader.png)
+![image](assets/logo_uspotreader.png)
 
 # MicroSpot Reader
 
