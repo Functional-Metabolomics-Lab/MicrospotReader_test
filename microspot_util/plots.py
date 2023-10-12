@@ -5,6 +5,8 @@ import matplotlib.patheffects as pe
 import matplotlib as mpl
 from .utility import *
 import math
+import pyopenms as oms
+from pyopenms.plotting import plot_chromatogram,plot_spectrum
 
 def plot_grid(figure,axs,img,lines):
     axs.imshow(img)
@@ -73,4 +75,23 @@ def plot_chromatogram(figure,axs,df):
         ylabel="Spot-Intensity [a.u.]",
         xlabel="Time [s]",
         xlim=[df["RT"].min(),df["RT"].max()]
+        )
+
+def plot_mzml_chromatogram(figure,axs,exp,mz_val):
+    rt_list=[]
+    int_list=[]
+    for spec in exp:
+        if spec.getMSLevel() ==1:
+            rt_list.append(spec.getRT())            
+            peaks=np.array(spec.get_peaks())
+            spot_int=peaks[1,np.where(peaks[0]==mz_val)][0]
+            int_list.append(spot_int)
+
+    axs.plot(rt_list,int_list,c="k",linewidth=1)
+    
+    axs.set(
+        title="Chromatogram of Bioactivity",
+        ylabel=f"Intensity @ m/z of {mz_val} [a.u.]",
+        xlabel="Retention Time [s]",
+        xlim=[min(rt_list),max(rt_list)],
         )

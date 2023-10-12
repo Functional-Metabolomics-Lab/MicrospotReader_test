@@ -6,3 +6,4 @@ scikit-image
 imageio
 pyopenms
 imagecodecs
+ipympl
