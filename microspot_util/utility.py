@@ -101,7 +101,6 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
     return gray_img
 
 
-@st.cache_resource
 def annotate_mzml(exp,spot_df,spot_mz, intensity_scalingfactor):
     """
     ## Description
