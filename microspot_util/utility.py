@@ -15,6 +15,7 @@ import skimage
 import numpy as np
 from pathlib import Path
 import streamlit as st
+import pyopenms as oms
 
 @st.cache_data
 def conv_gridinfo(point1:str,point2:str,conv_dict:dict) -> dict:
@@ -98,6 +99,68 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
         gray_img=skimage.util.invert(gray_img)
     
     return gray_img
+
+
+@st.cache_resource
+def annotate_mzml(exp,spot_df,spot_mz, intensity_scalingfactor):
+    """
+    ## Description
+    Sets the value of a specified m/z in an MS1 spectrum at a specific retention time to a scaled and interpolated spot-intensity value based off of a DataFrame containing RT-matched spot intensities.
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |exp|MSExperiment|pyOpenMS MSExperiment class with a loaded mzml file|
+    |spot_df|DataFrame|DataFrame containing Retention Time matched spot-intensities|
+    |spot_mz|float|m/z value to be set to the interpolated spot-intensity|
+    |intensity_scalingfactor|float|Value by which to scale the interpolated spotintensity for MS1 annotation|
+    """
+    spots=spot_df.sort_values("RT")
+
+    spec_list=[]
+    rt_list=[]
+    int_list=[]
+    # Loop through all Spectra in the mzml file.
+    for spectrum in exp:
+        # Check if the spectrum is MS1
+        if spectrum.getMSLevel()==1:
+
+            # Get the RT
+            rt_val=spectrum.getRT()
+            
+            # Index the spot with the closest, shorter RT value compared to the RT of the spectrum.
+            try:
+                prev_spot=spots[spots["RT"]<=rt_val].iloc[-1]
+            except:
+                prev_spot=spots.iloc[0]
+            
+            # Index the spot with the closest, longer RT value compared to the RT of the spectrum
+            try:        
+                next_spot=spots[spots["RT"]>rt_val].iloc[0]
+            except:
+                # If there is no higher RT in the spotlist, take the next smallest one.
+                next_spot=prev_spot
+            
+            # Interpolate the spot intensity for the RT value
+            interp_intensity=np.interp(rt_val,[prev_spot["RT"],next_spot["RT"]],[prev_spot["spot_intensity"],next_spot["spot_intensity"]])
+            
+            # Append the array of peak-m/z values with the one specified to save the spot intensity
+            peak_mz=np.append(spectrum.get_peaks()[0],spot_mz)
+            # Append the array of peak-intensities with the scaled version of the interpolated spot intensity
+            peak_int=np.append(spectrum.get_peaks()[1],interp_intensity*intensity_scalingfactor)
+            # Save the new peak arrays in the spectrum.
+            spectrum.set_peaks((peak_mz,peak_int))
+        
+        # Append current spectrum to the modified list of spectra
+        spec_list.append(spectrum)
+        # Append values for use in chromatogramm plot
+        rt_list.append(rt_val)
+        int_list.append(interp_intensity)
+
+    # Save the spectra-list to the MS Experiment
+    exp.setSpectra(spec_list)
+
 
 class spot:
     """
