@@ -79,8 +79,9 @@ with c1:
         st.session_state["mzml_download"]=False
 
 with c2:
-    with open("output.mzML", "rb") as mzml_file:
-        st.download_button(label="Download mzML File",data=mzml_file,mime="mzML",disabled=st.session_state["mzml_download"],use_container_width=True)
+    if st.session_state["mzml_download"]==False:
+        with open("output.mzML", "rb") as mzml_file:
+            st.download_button(label="Download mzML File",data=mzml_file,mime="mzML",disabled=st.session_state["mzml_download"],use_container_width=True)
 
 if st.session_state["annot_mzml"] is not None:
     t1,t2=st.tabs(["TIC-Chromatogram","Bioactivity Chromatogram"])
