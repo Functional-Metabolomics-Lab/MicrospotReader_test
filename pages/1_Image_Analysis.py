@@ -61,7 +61,7 @@ if st.session_state["analyze"]==False:
     if inputfile:
         st.markdown("## Image to be analyzed")
         
-        col1,col2=st.columns(2)
+        col1,col2=st.columns([0.6,0.4])
         
         # Displays the available Settings
         with col2:
@@ -71,11 +71,17 @@ if st.session_state["analyze"]==False:
             # Set the indexing for the first and last spot: Required for the calculation of grid parameters.
             first_spot=st.text_input("Index of First Spot",placeholder="A1")
             last_spot=st.text_input("Index of Last Spot",placeholder="P20")
+            # Enables or disables the detection of Halos
+            halo_toggle=st.toggle("Enable Halo detection",value=True,key="halo_toggle")
             
             # Enables start analysis button if all required settings are set and calculates grid information.
             if first_spot and last_spot:
                 st.session_state["init_analysis"]=False
                 st.session_state["grid"]=msu.conv_gridinfo(first_spot,last_spot,row_conv)
+            
+                # Labels the selected rows and columns as controls. All other spots are labeled as Samples
+                ctrl_rows=st.multiselect('Select Rows to be labeled as "control"',[row_conv_inv[i].upper() for i in range(st.session_state["grid"]["rows"]["bounds"][0],st.session_state["grid"]["rows"]["bounds"][1]+1)],key="ctrl_rows")
+                ctrl_cols=st.multiselect('Select Columns to be labeled as "control"',list(range(st.session_state["grid"]["columns"]["bounds"][0],st.session_state["grid"]["columns"]["bounds"][1]+1)),key="ctrl_cols")
 
             # Disables start analysis button and sends out warning if not all settings have been set
             else:
@@ -93,9 +99,12 @@ if st.session_state["analyze"]==False:
             ax.imshow(raw_img)
             ax.axis("off")
             st.pyplot(fig)
-            
+
+        with col1: 
+            with st.expander("Advanced Settings!"):
+                st.text("Placeholder")
             # Start the image processing algorithm. Only activated if all settings have been set
-            st.button("Start Analysis!",type="primary",disabled=st.session_state["init_analysis"],on_click=mst.set_analyze_True)
+            st.button("Start Analysis!",type="primary",disabled=st.session_state["init_analysis"],on_click=mst.set_analyze_True, use_container_width=True)
 
 # Initiates Analysis and displays results if Starts Analysis button has been pressed.
 if st.session_state["analyze"]==True:
@@ -145,16 +154,20 @@ if st.session_state["analyze"]==True:
                                 row_start=st.session_state["grid"]["rows"]["bounds"][0],
                                 col_start=st.session_state["grid"]["columns"]["bounds"][0])
 
-    # Calcualte the spot intensity
+    # Calcualte the spot intensity and label controls
     for s in sort_spots:
         s.get_intensity(st.session_state["img"])
 
-    # Detect Halos using the halo.detect method.
-    halos=msu.halo.detect(st.session_state["img"])
+        if s.row_name in st.session_state["ctrl_rows"] or s.col in st.session_state["ctrl_cols"]:
+            s.type="Control"
 
-    # Assign halos to their spot.
-    for s in sort_spots:
-        s.assign_halo(halos)
+    if st.session_state["halo_toggle"]==True:
+        # Detect Halos using the halo.detect method.
+        halos=msu.halo.detect(st.session_state["img"])
+
+        # Assign halos to their spot.
+        for s in sort_spots:
+            s.assign_halo(halos)
 
     st.markdown("## Results")
 
