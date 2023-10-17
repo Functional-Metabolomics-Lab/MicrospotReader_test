@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from matplotlib import pyplot as plt
-import numpy as np
 import microspot_util.plots as plots
 import microspot_util.streamlit as mst
 import microspot_util as msu
@@ -84,7 +83,7 @@ with c2:
     # Toggle serpentine sorting, if enabled spots are sorted in a serpentine pattern
     st.toggle("Serpentine Path",key="serpentine",on_change=mst.reset_merge)
     # Time each spot was eluted to.
-    d_t=st.number_input("Time per spot [s]",value=1,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
+    d_t=st.number_input("End Time [s]",value=1,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
 
 # Initializes the merging process if the "Merge Data" button was pressed
 if st.session_state["merge_state"]==True:

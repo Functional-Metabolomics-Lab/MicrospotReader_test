@@ -15,6 +15,7 @@ import skimage
 import numpy as np
 from pathlib import Path
 import streamlit as st
+import pyopenms as oms
 
 @st.cache_data
 def conv_gridinfo(point1:str,point2:str,conv_dict:dict) -> dict:
@@ -99,6 +100,67 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
     
     return gray_img
 
+
+def annotate_mzml(exp,spot_df,spot_mz, intensity_scalingfactor):
+    """
+    ## Description
+    Sets the value of a specified m/z in an MS1 spectrum at a specific retention time to a scaled and interpolated spot-intensity value based off of a DataFrame containing RT-matched spot intensities.
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |exp|MSExperiment|pyOpenMS MSExperiment class with a loaded mzml file|
+    |spot_df|DataFrame|DataFrame containing Retention Time matched spot-intensities|
+    |spot_mz|float|m/z value to be set to the interpolated spot-intensity|
+    |intensity_scalingfactor|float|Value by which to scale the interpolated spotintensity for MS1 annotation|
+    """
+    spots=spot_df.sort_values("RT")
+
+    spec_list=[]
+    rt_list=[]
+    int_list=[]
+    # Loop through all Spectra in the mzml file.
+    for spectrum in exp:
+        # Check if the spectrum is MS1
+        if spectrum.getMSLevel()==1:
+
+            # Get the RT
+            rt_val=spectrum.getRT()
+            
+            # Index the spot with the closest, shorter RT value compared to the RT of the spectrum.
+            try:
+                prev_spot=spots[spots["RT"]<=rt_val].iloc[-1]
+            except:
+                prev_spot=spots.iloc[0]
+            
+            # Index the spot with the closest, longer RT value compared to the RT of the spectrum
+            try:        
+                next_spot=spots[spots["RT"]>rt_val].iloc[0]
+            except:
+                # If there is no higher RT in the spotlist, take the next smallest one.
+                next_spot=prev_spot
+            
+            # Interpolate the spot intensity for the RT value
+            interp_intensity=np.interp(rt_val,[prev_spot["RT"],next_spot["RT"]],[prev_spot["spot_intensity"],next_spot["spot_intensity"]])
+            
+            # Append the array of peak-m/z values with the one specified to save the spot intensity
+            peak_mz=np.append(spectrum.get_peaks()[0],spot_mz)
+            # Append the array of peak-intensities with the scaled version of the interpolated spot intensity
+            peak_int=np.append(spectrum.get_peaks()[1],interp_intensity*intensity_scalingfactor)
+            # Save the new peak arrays in the spectrum.
+            spectrum.set_peaks((peak_mz,peak_int))
+        
+        # Append current spectrum to the modified list of spectra
+        spec_list.append(spectrum)
+        # Append values for use in chromatogramm plot
+        rt_list.append(rt_val)
+        int_list.append(interp_intensity)
+
+    # Save the spectra-list to the MS Experiment
+    exp.setSpectra(spec_list)
+
+
 class spot:
     """
     ## Description
@@ -135,7 +197,7 @@ class spot:
     |row_name|Name of Row|
     |rt|Retention Time of Spot in s|
     """
-    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan) -> None:
+    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan,sample_type="Sample") -> None:
         self.x=x
         self.y=y
         self.rad=rad
@@ -145,7 +207,8 @@ class spot:
         self.row=row
         self.col=col
         self.row_name=row_name
-        self.rt=np.nan
+        self.rt=rt
+        self.type=sample_type
     
     def assign_halo(self,halo_list:list,dist_thresh:float=14.73402725) -> None:
         """
@@ -207,13 +270,15 @@ class spot:
         new_df=pd.concat([spot_df,pd.Series({"row":self.row,
                                              "row_name":self.row_name,
                                              "column":self.col,
+                                             "type":self.type,
                                              "x_coord":self.x,
                                              "y_coord":self.y,
                                              "radius":self.rad,
                                              "halo":self.halo,
                                              "spot_intensity:":self.int,
                                              "note":self.note,
-                                             "RT":self.rt}).to_frame().T],ignore_index=True)
+                                             "RT":self.rt,
+                                             }).to_frame().T],ignore_index=True)
         return new_df
 
     def draw_spot(self,image:np.array,value:float=1,radius:int=None) -> np.array:
@@ -301,7 +366,7 @@ class spot:
         return spotlist
     
     @staticmethod
-    def annotate_RT(spot_list:list,start:float,spot_time:float)->list:
+    def annotate_RT(spot_list:list,start:float,end:float)->list:
         """
         ## Description
 
@@ -313,14 +378,13 @@ class spot:
         |---|---|---|
         |spot_list|list|List of spot-objects to be sorted|
         |start|float|Timepoint at which spotting was started in seconds|
-        |spot_time|float|Time each spot was spotted for|
+        |end|float|Timepoint at which spotting was stopped|
 
         ## Output
 
         RT-annotated list of spot-objects
         """
-        for s,rt in zip(spot_list,range(start,start+len
-        (spot_list)*spot_time,spot_time)):
+        for s,rt in zip(spot_list,np.linspace(start,end,num=len(spot_list))):
             s.rt=rt
     
     @staticmethod
@@ -379,6 +443,7 @@ class spot:
         spot_df=pd.DataFrame({"row":[i_spot.row for i_spot in spot_list],
                               "row_name":[i_spot.row_name for i_spot in spot_list],
                               "column":[i_spot.col for i_spot in spot_list],
+                              "type":[i_spot.type for i_spot in spot_list],
                               "x_coord":[i_spot.x for i_spot in spot_list],
                               "y_coord":[i_spot.y for i_spot in spot_list],
                               "radius":[i_spot.rad for i_spot in spot_list],
@@ -408,7 +473,7 @@ class spot:
         spot_list=[]
         
         for idx in df.index:
-            spot_list.append(spot(df.loc[idx,"x_coord"],df.loc[idx,"y_coord"],df.loc[idx,"radius"],df.loc[idx,"halo"],df.loc[idx,"spot_intensity"],df.loc[idx,"note"],df.loc[idx,"row"],df.loc[idx,"column"],df.loc[idx,"row_name"],df.loc[idx,"RT"]))
+            spot_list.append(spot(df.loc[idx,"x_coord"],df.loc[idx,"y_coord"],df.loc[idx,"radius"],df.loc[idx,"halo"],df.loc[idx,"spot_intensity"],df.loc[idx,"note"],df.loc[idx,"row"],df.loc[idx,"column"],df.loc[idx,"row_name"],df.loc[idx,"RT"],df.loc[idx,"type"]))
         
         return spot_list
 

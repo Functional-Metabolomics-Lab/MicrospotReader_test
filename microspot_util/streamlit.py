@@ -17,7 +17,14 @@ states={"analyze":False,            # State of image analysis -> False = not pro
         "edit_merge":None,          # df of the user edits to merge_df, used to update the stored merged data
         "merge_df":pd.DataFrame(columns=["Name","Select","id"]), # Dataframe for display of stored session data, used to index merged_data dictionary
         "merge_data":{},            # Dictionary that stores user specified merged spot-lists under a unique ID
-        "current_merge":None}       # Stores the spot-list of the current data merge
+        "current_merge":None,       # Stores the spot-list of the current data merge
+        "disable_mzml":True,        # Enables the "Annotate Data" button for mzml annotation if set to False
+        "mzml_download":True,       # Activates the Download-Button for current results.
+        "annot_mzml":None,          # Stores the final annotated mzML file.
+        "ctrl_rows":[],             # Row-Indexes of spots to be labeled as controls
+        "ctrl_cols":[],             # Column_Indexes of spots to be labeled as controls
+        "halo_toggle":True,         # Enables Halo detection if true.
+        }       
 
 def set_analyze_True():
     # Callback function to set analyze state to true
@@ -27,7 +34,7 @@ def page_setup():
     # Sets title and site icon
     st.set_page_config(
         page_title="Microspot Reader",
-        page_icon=r"assets\Logo_notext.png",
+        page_icon=r"assets/Logo_notext.png",
         initial_sidebar_state="auto",
         menu_items=None
         )

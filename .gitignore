@@ -161,3 +161,4 @@ cython_debug/
 
 # Files for testing
 optimize.py
+output.mzML
