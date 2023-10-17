@@ -197,7 +197,7 @@ class spot:
     |row_name|Name of Row|
     |rt|Retention Time of Spot in s|
     """
-    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan) -> None:
+    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan,sample_type="Sample") -> None:
         self.x=x
         self.y=y
         self.rad=rad
@@ -207,7 +207,8 @@ class spot:
         self.row=row
         self.col=col
         self.row_name=row_name
-        self.rt=np.nan
+        self.rt=rt
+        self.type=sample_type
     
     def assign_halo(self,halo_list:list,dist_thresh:float=14.73402725) -> None:
         """
@@ -269,13 +270,15 @@ class spot:
         new_df=pd.concat([spot_df,pd.Series({"row":self.row,
                                              "row_name":self.row_name,
                                              "column":self.col,
+                                             "type":self.type,
                                              "x_coord":self.x,
                                              "y_coord":self.y,
                                              "radius":self.rad,
                                              "halo":self.halo,
                                              "spot_intensity:":self.int,
                                              "note":self.note,
-                                             "RT":self.rt}).to_frame().T],ignore_index=True)
+                                             "RT":self.rt,
+                                             }).to_frame().T],ignore_index=True)
         return new_df
 
     def draw_spot(self,image:np.array,value:float=1,radius:int=None) -> np.array:
@@ -363,7 +366,7 @@ class spot:
         return spotlist
     
     @staticmethod
-    def annotate_RT(spot_list:list,start:float,spot_time:float)->list:
+    def annotate_RT(spot_list:list,start:float,end:float)->list:
         """
         ## Description
 
@@ -375,14 +378,13 @@ class spot:
         |---|---|---|
         |spot_list|list|List of spot-objects to be sorted|
         |start|float|Timepoint at which spotting was started in seconds|
-        |spot_time|float|Time each spot was spotted for|
+        |end|float|Timepoint at which spotting was stopped|
 
         ## Output
 
         RT-annotated list of spot-objects
         """
-        for s,rt in zip(spot_list,range(start,start+len
-        (spot_list)*spot_time,spot_time)):
+        for s,rt in zip(spot_list,np.linspace(start,end,num=len(spot_list))):
             s.rt=rt
     
     @staticmethod
@@ -441,6 +443,7 @@ class spot:
         spot_df=pd.DataFrame({"row":[i_spot.row for i_spot in spot_list],
                               "row_name":[i_spot.row_name for i_spot in spot_list],
                               "column":[i_spot.col for i_spot in spot_list],
+                              "type":[i_spot.type for i_spot in spot_list],
                               "x_coord":[i_spot.x for i_spot in spot_list],
                               "y_coord":[i_spot.y for i_spot in spot_list],
                               "radius":[i_spot.rad for i_spot in spot_list],
@@ -470,7 +473,7 @@ class spot:
         spot_list=[]
         
         for idx in df.index:
-            spot_list.append(spot(df.loc[idx,"x_coord"],df.loc[idx,"y_coord"],df.loc[idx,"radius"],df.loc[idx,"halo"],df.loc[idx,"spot_intensity"],df.loc[idx,"note"],df.loc[idx,"row"],df.loc[idx,"column"],df.loc[idx,"row_name"],df.loc[idx,"RT"]))
+            spot_list.append(spot(df.loc[idx,"x_coord"],df.loc[idx,"y_coord"],df.loc[idx,"radius"],df.loc[idx,"halo"],df.loc[idx,"spot_intensity"],df.loc[idx,"note"],df.loc[idx,"row"],df.loc[idx,"column"],df.loc[idx,"row_name"],df.loc[idx,"RT"],df.loc[idx,"type"]))
         
         return spot_list
 
