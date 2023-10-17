@@ -20,7 +20,10 @@ states={"analyze":False,            # State of image analysis -> False = not pro
         "current_merge":None,       # Stores the spot-list of the current data merge
         "disable_mzml":True,        # Enables the "Annotate Data" button for mzml annotation if set to False
         "mzml_download":True,       # Activates the Download-Button for current results.
-        "annot_mzml":None           # Stores the final annotated mzML file.
+        "annot_mzml":None,          # Stores the final annotated mzML file.
+        "ctrl_rows":[],             # Row-Indexes of spots to be labeled as controls
+        "ctrl_cols":[],             # Column_Indexes of spots to be labeled as controls
+        "halo_toggle":True,         # Enables Halo detection if true.
         }       
 
 def set_analyze_True():

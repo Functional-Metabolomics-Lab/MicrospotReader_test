@@ -366,7 +366,7 @@ class spot:
         return spotlist
     
     @staticmethod
-    def annotate_RT(spot_list:list,start:float,spot_time:float)->list:
+    def annotate_RT(spot_list:list,start:float,end:float)->list:
         """
         ## Description
 
@@ -378,14 +378,13 @@ class spot:
         |---|---|---|
         |spot_list|list|List of spot-objects to be sorted|
         |start|float|Timepoint at which spotting was started in seconds|
-        |spot_time|float|Time each spot was spotted for|
+        |end|float|Timepoint at which spotting was stopped|
 
         ## Output
 
         RT-annotated list of spot-objects
         """
-        for s,rt in zip(spot_list,range(start,start+len
-        (spot_list)*spot_time,spot_time)):
+        for s,rt in zip(spot_list,np.linspace(start,end,num=len(spot_list))):
             s.rt=rt
     
     @staticmethod
