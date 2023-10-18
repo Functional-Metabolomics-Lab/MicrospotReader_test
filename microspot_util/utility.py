@@ -317,7 +317,7 @@ class spot:
 
     @staticmethod
     @st.cache_data
-    def detect(gray_img:np.array,spot_nr:int,canny_sig:int=10,canny_lowthresh:float=0.001,canny_highthresh:float=0.001,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.3) -> list:
+    def detect(gray_img:np.array,spot_nr:int,canny_sig:int=10,canny_lowthresh:float=0.001,canny_highthresh:float=0.001,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.3,small_rad:int=20,large_rad:int=30) -> list:
         """
         ## Description
 
@@ -335,6 +335,8 @@ class spot:
         |hough_minx|int|Miniumum distance in x direction between 2 peaks during circle detection using hough transform|
         |hough_miny|int|Miniumum distance in y direction between 2 peaks during circle detection using hough transform|
         |hough_thresh|int|threshold of peak-intensity during circle detection using hough transform as fraction of maximum value|
+        |small_rad|int|Smallest tested radius|
+        |large_rad|int|Largest tested radius|
 
         ## Output
 
@@ -350,7 +352,7 @@ class spot:
         )
 
         # Range of Radii that are tested during inital spotdetection.
-        tested_radii=np.arange(20,31)
+        tested_radii=np.arange(small_rad,large_rad+1)
 
         # Hough transform for a circle of the edge-image and peak detection to find circles in earlier defined range of radii.
         spot_hough=skimage.transform.hough_circle(edges,tested_radii)
@@ -617,6 +619,18 @@ class spot:
     
     @staticmethod
     def normalize(spot_list:list) -> None:
+        """
+        ## Description
+
+        Normalizes all spot-intensties using the labeled controls. 
+
+        ## Input
+
+        |Parameter|Type|Description|
+        |---|---|---|
+        |spot_list|list|List of spot-objects to be normalized, must contain atleast one spot of the type "control"|
+        """
+
         ctrl_mn=np.array([s.int for s in spot_list if s.type=="Control"]).mean()
 
         for s in spot_list:
@@ -736,7 +750,7 @@ class gridline:
     
     @staticmethod
     @st.cache_data
-    def detect(img:np.array,max_tilt:int=5) -> list:
+    def detect(img:np.array,max_tilt:int=5,min_dist:int=80,threshold:float=0.2) -> list:
         """
         ## Description
 
@@ -748,6 +762,8 @@ class gridline:
         |---|---|---|
         |img|Array|np.array of an image containing gridpoints|
         |max_tilt|int|Maximum allowed tilt of the grid in degrees.|
+        |min_dist|int|Minumum distance between two detected lines|
+        |threshold|float|Fraction of max|
 
         ## Output
 
@@ -761,7 +777,7 @@ class gridline:
         line_img[:,np.r_[max_tilt:89-max_tilt,91+max_tilt:180-max_tilt]]=0
         
         # Detect lines in the hough transformed image.
-        accum,angle,distance=skimage.transform.hough_line_peaks(line_img,ang,dist,min_distance=80,threshold=0.2*line_img.max())
+        accum,angle,distance=skimage.transform.hough_line_peaks(line_img,ang,dist,min_distance=min_dist,threshold=threshold*line_img.max())
         
         # Saving all gridlines in a list
         gridlines=[gridline(a,d) for a,d in zip(angle,distance)]

@@ -100,17 +100,45 @@ if st.session_state["analyze"]==False:
             ax.axis("off")  
             st.pyplot(fig)
 
-        with col1: 
-            with st.expander("Advanced Settings!"):
-                st.text("Placeholder")
+        
+        with st.expander("Advanced Settings!"):
+            st.session_state["adv_settings"]={"init_det":{},}
+            
+            st.markdown("__Initial Spot-Detection__")
+            
+            c1,c2=st.columns(2)
+            with c1:
+                st.session_state["adv_settings"]["init_det"]["low_rad"]=st.number_input("Smallest tested radius:",value=20,step=1)
+                st.session_state["adv_settings"]["init_det"]["sigma"]=st.number_input("Sigma-Value for Gaussian Blur:",min_value=1,max_value=20,step=1,value=10)
+                st.session_state["adv_settings"]["init_det"]["low_edge"]=st.number_input("Edge-Detection low threshold:",value=0.001)
+                st.session_state["adv_settings"]["init_det"]["high_edge"]=st.number_input("Edge-Detection high threshold:",value=0.001)
 
+            with c2:
+                st.session_state["adv_settings"]["init_det"]["high_rad"]=st.number_input("Largest tested radius:",value=30,step=1)
+                st.session_state["adv_settings"]["init_det"]["x_dist"]=st.number_input("Minimum x-distance between spots:",value=70,step=1)
+                st.session_state["adv_settings"]["init_det"]["y_dist"]=st.number_input("Minimum y-distance between spots:",value=70,step=1)
+                st.session_state["adv_settings"]["init_det"]["thresh"]=st.number_input("Spot-Detection Threshold:",value=0.3)
+
+            st.divider()
+
+        with col1:
             # Start the image processing algorithm. Only activated if all settings have been set
             st.button("Start Analysis!",type="primary",disabled=st.session_state["init_analysis"],on_click=mst.set_analyze_True, use_container_width=True)
 
 # Initiates Analysis and displays results if Starts Analysis button has been pressed.
 if st.session_state["analyze"]==True:
     # Inital spot-detection.
-    init_spots=msu.spot.detect(st.session_state["img"],st.session_state["grid"]["spot_nr"])
+    init_spots=msu.spot.detect(gray_img=st.session_state["img"],
+                               spot_nr=st.session_state["grid"]["spot_nr"],
+                               canny_sig=st.session_state["adv_settings"]["init_det"]["sigma"],
+                               canny_lowthresh=st.session_state["adv_settings"]["init_det"]["low_edge"],
+                               canny_highthresh=st.session_state["adv_settings"]["init_det"]["high_edge"],
+                               hough_minx=st.session_state["adv_settings"]["init_det"]["x_dist"],
+                               hough_miny=st.session_state["adv_settings"]["init_det"]["y_dist"],
+                               hough_thresh=st.session_state["adv_settings"]["init_det"]["thresh"],
+                               small_rad=st.session_state["adv_settings"]["init_det"]["low_rad"],
+                               large_rad=st.session_state["adv_settings"]["init_det"]["high_rad"],
+                               )
         
     # Create an empty image and draw a dot for each detected spot.
     dot_img=np.zeros(st.session_state["img"].shape)
@@ -118,7 +146,11 @@ if st.session_state["analyze"]==True:
         i_spot.draw_spot(dot_img,255,5)
 
     # Detection of gridlines.
-    gridlines=msu.gridline.detect(dot_img)
+    gridlines=msu.gridline.detect(img=dot_img, 
+                                  max_tilt=5,
+                                  min_dist=80,
+                                  threshold=0.2
+                                  )
     hor_line=[line for line in gridlines if line.alignment=="hor"]
     vert_line=[line for line in gridlines if line.alignment=="vert"]
 
@@ -163,7 +195,14 @@ if st.session_state["analyze"]==True:
 
     if st.session_state["halo_toggle"]==True:
         # Detect Halos using the halo.detect method.
-        halos=msu.halo.detect(st.session_state["img"])
+        halos=msu.halo.detect(img=st.session_state["img"],
+                              canny_sig=3.52941866,
+                              canny_lowthresh=44.78445877,
+                              canny_highthresh=44.78445877,
+                              hough_minx=70,
+                              hough_miny=70,
+                              hough_thresh=0.38546213,
+                              )
 
         # Assign halos to their spot.
         for s in sort_spots:
