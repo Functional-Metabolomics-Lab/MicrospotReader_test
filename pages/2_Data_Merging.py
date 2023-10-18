@@ -91,7 +91,7 @@ with col3:
     st.toggle("Serpentine Path",key="serpentine",on_change=mst.reset_merge)
 with c2:
     # Time each spot was eluted to.
-    d_t=st.number_input("End Time [s]",value=1,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
+    t_end=st.number_input("End Time [s]",value=520,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
 
 # Initializes the merging process if the "Merge Data" button was pressed
 if st.session_state["merge_state"]==True:
@@ -105,7 +105,7 @@ if st.session_state["merge_state"]==True:
 
     # Annotation of all spots with a retention time if enabled
     if st.session_state["addRT"]==True:
-        msu.spot.annotate_RT(merged_spots,t_0,d_t)
+        msu.spot.annotate_RT(merged_spots,t_0,t_end)
 
     # creates a dataframe for download and visualization
     df=msu.spot.create_df(merged_spots)

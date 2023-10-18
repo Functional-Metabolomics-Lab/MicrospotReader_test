@@ -158,7 +158,6 @@ if st.session_state["analyze"]==True:
     # Calcualte the spot intensity and label controls
     for s in sort_spots:
         s.get_intensity(st.session_state["img"])
-
         if s.row_name in st.session_state["ctrl_rows"] or s.col in st.session_state["ctrl_cols"]:
             s.type="Control"
 
@@ -170,6 +169,7 @@ if st.session_state["analyze"]==True:
         for s in sort_spots:
             s.assign_halo(halos)
 
+    # If controls are present, normalize the spot intensities 
     if len(st.session_state["ctrl_rows"]) != 0 or len(st.session_state["ctrl_cols"]) != 0:
         msu.spot.normalize(sort_spots)
 
