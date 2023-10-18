@@ -197,7 +197,7 @@ class spot:
     |row_name|Name of Row|
     |rt|Retention Time of Spot in s|
     """
-    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan,sample_type="Sample") -> None:
+    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan,sample_type:str="Sample",norm_int:float=np.nan) -> None:
         self.x=x
         self.y=y
         self.rad=rad
@@ -209,6 +209,7 @@ class spot:
         self.row_name=row_name
         self.rt=rt
         self.type=sample_type
+        self.norm_int=norm_int
     
     def assign_halo(self,halo_list:list,dist_thresh:float=14.73402725) -> None:
         """
@@ -275,7 +276,8 @@ class spot:
                                              "y_coord":self.y,
                                              "radius":self.rad,
                                              "halo":self.halo,
-                                             "spot_intensity:":self.int,
+                                             "spot_intensity":self.int,
+                                             "norm_intensity":self.norm_int,
                                              "note":self.note,
                                              "RT":self.rt,
                                              }).to_frame().T],ignore_index=True)
@@ -449,6 +451,7 @@ class spot:
                               "radius":[i_spot.rad for i_spot in spot_list],
                               "halo":[i_spot.halo for i_spot in spot_list],
                               "spot_intensity":[i_spot.int for i_spot in spot_list],
+                              "norm_intensity":[i_spot.norm_int for i_spot in spot_list],
                               "note":[i_spot.note for i_spot in spot_list],
                               "RT":[i_spot.rt for i_spot in spot_list]})
         return spot_df
@@ -473,7 +476,7 @@ class spot:
         spot_list=[]
         
         for idx in df.index:
-            spot_list.append(spot(df.loc[idx,"x_coord"],df.loc[idx,"y_coord"],df.loc[idx,"radius"],df.loc[idx,"halo"],df.loc[idx,"spot_intensity"],df.loc[idx,"note"],df.loc[idx,"row"],df.loc[idx,"column"],df.loc[idx,"row_name"],df.loc[idx,"RT"],df.loc[idx,"type"]))
+            spot_list.append(spot(df.loc[idx,"x_coord"],df.loc[idx,"y_coord"],df.loc[idx,"radius"],df.loc[idx,"halo"],df.loc[idx,"spot_intensity"],df.loc[idx,"note"],df.loc[idx,"row"],df.loc[idx,"column"],df.loc[idx,"row_name"],df.loc[idx,"RT"],df.loc[idx,"type"],df.loc[idx,"norm_intensity"]))
         
         return spot_list
 
@@ -611,6 +614,13 @@ class spot:
                 break
         
         return sort_spots
+    
+    @staticmethod
+    def normalize(spot_list:list) -> None:
+        ctrl_mn=np.array([s.int for s in spot_list if s.type=="Control"]).mean()
+
+        for s in spot_list:
+            s.norm_int=s.int/ctrl_mn
     
 class gridpoint:
     """

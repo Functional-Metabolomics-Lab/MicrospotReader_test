@@ -97,12 +97,13 @@ if st.session_state["analyze"]==False:
             # Display the grayscale image using the "viridis" colormap.
             fig,ax=plt.subplots()
             ax.imshow(raw_img)
-            ax.axis("off")
+            ax.axis("off")  
             st.pyplot(fig)
 
         with col1: 
             with st.expander("Advanced Settings!"):
                 st.text("Placeholder")
+
             # Start the image processing algorithm. Only activated if all settings have been set
             st.button("Start Analysis!",type="primary",disabled=st.session_state["init_analysis"],on_click=mst.set_analyze_True, use_container_width=True)
 
@@ -168,6 +169,9 @@ if st.session_state["analyze"]==True:
         # Assign halos to their spot.
         for s in sort_spots:
             s.assign_halo(halos)
+
+    if len(st.session_state["ctrl_rows"]) != 0 or len(st.session_state["ctrl_cols"]) != 0:
+        msu.spot.normalize(sort_spots)
 
     st.markdown("## Results")
 

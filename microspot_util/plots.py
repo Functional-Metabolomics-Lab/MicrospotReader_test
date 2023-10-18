@@ -46,10 +46,17 @@ def plot_result(figure,axs,img,df,g_prop):
     for idx in halo_df.index:
         axs.text(halo_df.loc[idx,"x_coord"]+12, halo_df.loc[idx,"y_coord"]-9, f'{halo_df.loc[idx,"halo"]:.0f}',c="white",size=7,path_effects=[pe.withStroke(linewidth=1, foreground="k")])
 
-def plot_heatmap(figure,axs,df,g_prop):
-    heatmap=df.pivot_table(index="row_name",columns="column",values="spot_intensity")
+def plot_heatmap(figure,axs,df,g_prop,norm_data:bool=False):
+    if norm_data==False:
+        heatmap=df.pivot_table(index="row_name",columns="column",values="spot_intensity")
+        title="Heatmap of Spot-Intensities"
+
+    elif norm_data==True: 
+        heatmap=df.pivot_table(index="row_name",columns="column",values="norm_intensity")
+        title="Heatmap of normalized Spot-Intensities"
+
     htmp=axs.pcolormesh(heatmap.iloc[::-1],edgecolors="white",linewidth=4)
-    axs.set(title="Heatmap of Spot-Intensities",
+    axs.set(title=title,
             aspect="equal",
             ylabel="Row",
             xlabel="Column",
@@ -68,11 +75,18 @@ def plot_heatmap(figure,axs,df,g_prop):
             fancybox=True,ncol=5)
     figure.colorbar(htmp,ax=axs,label="Spot-Intensity",shrink=0.5)
 
-def plot_chromatogram(figure,axs,df):
-    axs.plot(df["RT"],df["spot_intensity"],c="k",linewidth=1)
+def plot_chromatogram(figure,axs,df,norm_data:bool=False):
+    if norm_data==False:
+        axs.plot(df["RT"],df["spot_intensity"],c="k",linewidth=1)
+        ylabel="Spot-Intensity [a.u.]"
+
+    elif norm_data==True:
+        axs.plot(df["RT"],df["norm_intensity"],c="k",linewidth=1)
+        ylabel="Normalized Spot-Intensity [a.u.]"
+
     axs.set(
         title="Bioactivity-Chromatogram",
-        ylabel="Spot-Intensity [a.u.]",
+        ylabel=ylabel,
         xlabel="Time [s]",
         xlim=[df["RT"].min(),df["RT"].max()]
         )

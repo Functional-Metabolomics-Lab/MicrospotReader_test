@@ -68,20 +68,28 @@ elif choose_input=="Upload Data":
     else:
         st.session_state["mergedata_loaded"]=True
 
+col1,col2,col3=st.columns(3)
 c1,c2=st.columns(2)
 
 # Settings for Data Merging
-with c1:
+with col1:
+    # Toggle the use of normalized data
+    st.toggle("Use normalized Data",key="toggleNorm",on_change=mst.reset_merge)
+
+with col2:
     # Toggle the annotation of all spots with a retention time
     st.toggle("Add Retention-Time",key="addRT",on_change=mst.reset_merge)
+
+with c1:
     # Input for the retention time at which spotting was started
     t_0=st.number_input("Start Time [s]",value=0,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
     # Button starting the data merging process.
     st.button("Merge Data",disabled=st.session_state["mergedata_loaded"],type="primary",on_click=mst.merge_settings)
 
-with c2:
+with col3:
     # Toggle serpentine sorting, if enabled spots are sorted in a serpentine pattern
     st.toggle("Serpentine Path",key="serpentine",on_change=mst.reset_merge)
+with c2:
     # Time each spot was eluted to.
     d_t=st.number_input("End Time [s]",value=1,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
 
@@ -123,7 +131,7 @@ if st.session_state["merge_state"]==True:
         with t3:
             # Plot a chromatogramm of spot intensities 
             fig,ax=plt.subplots()
-            plots.plot_chromatogram(fig,ax,df)
+            plots.plot_chromatogram(fig,ax,df,norm_data=st.session_state["toggleNorm"])
             st.pyplot(fig)
 
     else:
@@ -139,7 +147,7 @@ if st.session_state["merge_state"]==True:
         c1,c2=st.columns(2)
         with c1:
             fig,ax=plt.subplots()
-            plots.plot_heatmap(fig,ax,df,grid_props)
+            plots.plot_heatmap(fig,ax,df,grid_props,norm_data=st.session_state["toggleNorm"])
             st.pyplot(fig)
         with c2:
             st.markdown("## Heatmap of Merged Data")
