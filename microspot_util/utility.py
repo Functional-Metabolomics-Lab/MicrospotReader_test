@@ -820,7 +820,7 @@ class halo:
 
     @staticmethod
     @st.cache_data
-    def detect(img,canny_sig:float=3.52941866,canny_lowthresh:float=44.78445877,canny_highthresh:float=44.78445877,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.38546213):
+    def detect(img,canny_sig:float=3.52941866,canny_lowthresh:float=44.78445877,canny_highthresh:float=44.78445877,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.38546213,min_rad:int=40,max_rad:int=70):
         """
         ## Description
 
@@ -837,6 +837,8 @@ class halo:
         |hough_minx|int|Miniumum distance in x direction between 2 peaks during circle detection using hough transform|
         |hough_miny|int|Miniumum distance in y direction between 2 peaks during circle detection using hough transform|
         |hough_thresh|int|threshold of peak-intensity during circle detection using hough transform as fraction of maximum value|
+        |min_rad|int|Minimum tested radius|
+        |max_rad|int|Maximum tested radius|
 
         ## Output
 
@@ -852,7 +854,7 @@ class halo:
 
         # Canny edge detection and follow up circle detection using hough transform.
         halo_edge=skimage.feature.canny(halo_img,canny_sig,canny_lowthresh,canny_highthresh)
-        halo_radii=np.arange(40,70) # Radii tested for.
+        halo_radii=np.arange(min_rad,max_rad+1) # Radii tested for.
         halo_hough=skimage.transform.hough_circle(halo_edge,halo_radii)
 
         h_accum,h_x,h_y,h_radii=skimage.transform.hough_circle_peaks(

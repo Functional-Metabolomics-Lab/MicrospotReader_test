@@ -102,24 +102,60 @@ if st.session_state["analyze"]==False:
 
         
         with st.expander("Advanced Settings!"):
-            st.session_state["adv_settings"]={"init_det":{},}
+            st.session_state["adv_settings"]={"init_det":{},"grid_det":{},"spot_misc":{},"halo_det":{}}
             
             st.markdown("__Initial Spot-Detection__")
             
             c1,c2=st.columns(2)
             with c1:
-                st.session_state["adv_settings"]["init_det"]["low_rad"]=st.number_input("Smallest tested radius:",value=20,step=1)
-                st.session_state["adv_settings"]["init_det"]["sigma"]=st.number_input("Sigma-Value for Gaussian Blur:",min_value=1,max_value=20,step=1,value=10)
-                st.session_state["adv_settings"]["init_det"]["low_edge"]=st.number_input("Edge-Detection low threshold:",value=0.001)
-                st.session_state["adv_settings"]["init_det"]["high_edge"]=st.number_input("Edge-Detection high threshold:",value=0.001)
+                st.session_state["adv_settings"]["init_det"]["low_rad"]=st.number_input("Smallest tested radius:",value=20,step=1,min_value=1)
+                st.session_state["adv_settings"]["init_det"]["sigma"]=st.number_input("Sigma-value for gaussian blur:",min_value=1,max_value=20,step=1,value=10)
+                st.session_state["adv_settings"]["init_det"]["low_edge"]=st.number_input("Edge-detection low threshold:",value=0.001,min_value=0.0)
+                st.session_state["adv_settings"]["init_det"]["high_edge"]=st.number_input("Edge-detection high threshold:",value=0.001,min_value=0.0)
 
             with c2:
-                st.session_state["adv_settings"]["init_det"]["high_rad"]=st.number_input("Largest tested radius:",value=30,step=1)
-                st.session_state["adv_settings"]["init_det"]["x_dist"]=st.number_input("Minimum x-distance between spots:",value=70,step=1)
-                st.session_state["adv_settings"]["init_det"]["y_dist"]=st.number_input("Minimum y-distance between spots:",value=70,step=1)
-                st.session_state["adv_settings"]["init_det"]["thresh"]=st.number_input("Spot-Detection Threshold:",value=0.3)
+                st.session_state["adv_settings"]["init_det"]["high_rad"]=st.number_input("Largest tested radius:",value=30,step=1,min_value=1)
+                st.session_state["adv_settings"]["init_det"]["x_dist"]=st.number_input("Minimum x-distance between spots:",value=70,step=1,min_value=0)
+                st.session_state["adv_settings"]["init_det"]["y_dist"]=st.number_input("Minimum y-distance between spots:",value=70,step=1,min_value=0)
+                st.session_state["adv_settings"]["init_det"]["thresh"]=st.number_input("Spot-detection threshold:",value=0.3,min_value=0.0)
 
             st.divider()
+
+            st.markdown("__Grid-Detection__")
+
+            c1,c2=st.columns(2)
+            with c1:
+                st.session_state["adv_settings"]["grid_det"]["tilt"]=st.number_input("Maximum tilt of grid (in degrees):",value=5,step=1,min_value=0)
+                st.session_state["adv_settings"]["grid_det"]["thresh"]=st.number_input("Threshold for line-detection:",value=0.2,min_value=0.0)
+            with c2:
+                st.session_state["adv_settings"]["grid_det"]["min_dist"]=st.number_input("Minimum distance of grid-lines:",value=80,step=1,min_value=0)
+
+            st.divider()
+
+            st.markdown("__Spot Correction and Intensity Evaluation__")
+
+            c1,c2=st.columns(2)
+            with c1:
+                st.session_state["adv_settings"]["spot_misc"]["acceptance"]=st.number_input("Distance from grid-point for acceptance of spot:",value=10,min_value=1,step=1)
+            with c2:
+                st.session_state["adv_settings"]["spot_misc"]["int_rad"]=st.number_input("Disk-Radius for spot-intensity calculation:",value=25,min_value=1,step=1)
+            
+            st.divider()
+
+            st.markdown("__Halo-Detection__")
+
+            c1,c2=st.columns(2)
+            with c1:
+                st.session_state["adv_settings"]["halo_det"]["low_rad"]=st.number_input("Smallest tested radius:",value=40,step=1,min_value=1)
+                st.session_state["adv_settings"]["halo_det"]["sigma"]=st.number_input("Sigma-value for gaussian blur:",min_value=1.0,max_value=20.0,value=3.52941866)
+                st.session_state["adv_settings"]["halo_det"]["low_edge"]=st.number_input("Edge-detection low threshold:",value=44.78445877,min_value=0.0)
+                st.session_state["adv_settings"]["halo_det"]["high_edge"]=st.number_input("Edge-detection high threshold:",value=44.78445877,min_value=0.0)
+
+            with c2:
+                st.session_state["adv_settings"]["halo_det"]["high_rad"]=st.number_input("Largest tested radius:",value=70,step=1,min_value=1)
+                st.session_state["adv_settings"]["halo_det"]["x_dist"]=st.number_input("Minimum x-distance between halos:",value=70,step=1,min_value=0)
+                st.session_state["adv_settings"]["halo_det"]["y_dist"]=st.number_input("Minimum y-distance between halos:",value=70,step=1,min_value=0)
+                st.session_state["adv_settings"]["halo_det"]["thresh"]=st.number_input("Spot-detection threshold:",value=0.38546213,min_value=0.0)
 
         with col1:
             # Start the image processing algorithm. Only activated if all settings have been set
@@ -147,9 +183,9 @@ if st.session_state["analyze"]==True:
 
     # Detection of gridlines.
     gridlines=msu.gridline.detect(img=dot_img, 
-                                  max_tilt=5,
-                                  min_dist=80,
-                                  threshold=0.2
+                                  max_tilt=st.session_state["adv_settings"]["grid_det"]["tilt"],
+                                  min_dist=st.session_state["adv_settings"]["grid_det"]["min_dist"],
+                                  threshold=st.session_state["adv_settings"]["grid_det"]["thresh"]
                                   )
     hor_line=[line for line in gridlines if line.alignment=="hor"]
     vert_line=[line for line in gridlines if line.alignment=="vert"]
@@ -173,12 +209,12 @@ if st.session_state["analyze"]==True:
             dist_list.append(pointdist)
         
         # If the distance between the current spot and any gridpoint is <= it is accepted as correct.
-        if min(dist_list)<=10:
+        if min(dist_list)<=st.session_state["adv_settings"]["spot_misc"]["acceptance"]:
             corr_spots.append(s_point)
 
     # Loop over all gridpoints and backfill the ones that are not associated with a spot.
     for g_point in grid_points:
-        if g_point.min_dist>10:
+        if g_point.min_dist>st.session_state["adv_settings"]["spot_misc"]["acceptance"]:
             msu.spot.backfill(corr_spots,g_point.x,g_point.y)
 
     # Assigns each spot a place on the grid.
@@ -196,12 +232,14 @@ if st.session_state["analyze"]==True:
     if st.session_state["halo_toggle"]==True:
         # Detect Halos using the halo.detect method.
         halos=msu.halo.detect(img=st.session_state["img"],
-                              canny_sig=3.52941866,
-                              canny_lowthresh=44.78445877,
-                              canny_highthresh=44.78445877,
-                              hough_minx=70,
-                              hough_miny=70,
-                              hough_thresh=0.38546213,
+                              canny_sig=st.session_state["adv_settings"]["halo_det"]["sigma"],
+                              canny_lowthresh=st.session_state["adv_settings"]["halo_det"]["low_edge"],
+                              canny_highthresh=st.session_state["adv_settings"]["halo_det"]["high_edge"],
+                              hough_minx=st.session_state["adv_settings"]["halo_det"]["x_dist"],
+                              hough_miny=st.session_state["adv_settings"]["halo_det"]["y_dist"],
+                              hough_thresh=st.session_state["adv_settings"]["halo_det"]["thresh"],
+                              min_rad=st.session_state["adv_settings"]["halo_det"]["low_rad"],
+                              max_rad=st.session_state["adv_settings"]["halo_det"]["high_rad"],
                               )
 
         # Assign halos to their spot.
