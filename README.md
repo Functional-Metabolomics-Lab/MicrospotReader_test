@@ -16,7 +16,7 @@ The Web-App is based on streamlit and currently runs on the streamlit cloud serv
 1. Clone this repository
 2. Install all packages from the `requirements.txt` file:
 
-`python -m pip install -r requirements.tyt`
+`python -m pip install -r requirements.txt`
 
 3. Open Windows Terminal and go to the main folder of the repository:
 
