@@ -252,6 +252,17 @@ if st.session_state["analyze"]==True:
 
     st.markdown("## Results")
 
+    if st.session_state["halo_toggle"]==True:
+        # Create a List of all indices for spots with detected Halos
+        halo_list=[s.row_name+str(s.col) for s in sort_spots if s.halo>0]
+        # UI Selection of false-positive halos
+        false_pos=st.multiselect("Remove false-positive Halos:",halo_list)
+
+        # If a spot was selected, remove the corresponding halo.
+        for s in sort_spots:
+            if s.row_name+str(s.col) in false_pos:
+                s.halo=np.nan
+
     # Tabs for all Results that are displayed
     tab1,tab2,tab3,tab4=st.tabs(["Image","Table","Heatmap", "Grid"])
 
