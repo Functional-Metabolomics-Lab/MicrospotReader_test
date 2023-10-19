@@ -68,22 +68,30 @@ elif choose_input=="Upload Data":
     else:
         st.session_state["mergedata_loaded"]=True
 
+col1,col2,col3=st.columns(3)
 c1,c2=st.columns(2)
 
 # Settings for Data Merging
-with c1:
+with col1:
+    # Toggle the use of normalized data
+    st.toggle("Use normalized Data",key="toggleNorm",on_change=mst.reset_merge)
+
+with col2:
     # Toggle the annotation of all spots with a retention time
     st.toggle("Add Retention-Time",key="addRT",on_change=mst.reset_merge)
+
+with c1:
     # Input for the retention time at which spotting was started
     t_0=st.number_input("Start Time [s]",value=0,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
     # Button starting the data merging process.
     st.button("Merge Data",disabled=st.session_state["mergedata_loaded"],type="primary",on_click=mst.merge_settings)
 
-with c2:
+with col3:
     # Toggle serpentine sorting, if enabled spots are sorted in a serpentine pattern
     st.toggle("Serpentine Path",key="serpentine",on_change=mst.reset_merge)
+with c2:
     # Time each spot was eluted to.
-    d_t=st.number_input("End Time [s]",value=1,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
+    t_end=st.number_input("End Time [s]",value=520,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
 
 # Initializes the merging process if the "Merge Data" button was pressed
 if st.session_state["merge_state"]==True:
@@ -92,21 +100,21 @@ if st.session_state["merge_state"]==True:
     for spotlist in data_list:
         merged_spots.extend(spotlist)
     
+    # Extract information on first and last spot
+    first_spot=merged_spots[0].row_name+str(merged_spots[0].col)
+    last_spot=merged_spots[-1].row_name+str(merged_spots[-1].col)
+
     # Sorts the spots according to the settings
     msu.spot.sort_list(merged_spots,serpentine=st.session_state["serpentine"],inplace=True)
 
     # Annotation of all spots with a retention time if enabled
     if st.session_state["addRT"]==True:
-        msu.spot.annotate_RT(merged_spots,t_0,d_t)
+        msu.spot.annotate_RT(merged_spots,t_0,t_end)
 
     # creates a dataframe for download and visualization
     df=msu.spot.create_df(merged_spots)
     # stores current data in a session state
     st.session_state["current_merge"]=df
-    
-    # Extract information on first and last spot from spotlist (required for heatmap)
-    first_spot=merged_spots[0].row_name+str(merged_spots[0].col)
-    last_spot=merged_spots[-1].row_name+str(merged_spots[-1].col)
 
     # Dictionaries to convert Row-Letters into Row-Numbers and vice versa (required for heatmap)
     row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}
@@ -123,7 +131,7 @@ if st.session_state["merge_state"]==True:
         with t3:
             # Plot a chromatogramm of spot intensities 
             fig,ax=plt.subplots()
-            plots.plot_chromatogram(fig,ax,df)
+            plots.plot_chromatogram(fig,ax,df,norm_data=st.session_state["toggleNorm"])
             st.pyplot(fig)
 
     else:
@@ -136,13 +144,9 @@ if st.session_state["merge_state"]==True:
 
     with t2:
         # display heatmap of merged data
-        c1,c2=st.columns(2)
-        with c1:
-            fig,ax=plt.subplots()
-            plots.plot_heatmap(fig,ax,df,grid_props)
-            st.pyplot(fig)
-        with c2:
-            st.markdown("## Heatmap of Merged Data")
+        fig,ax=plt.subplots()
+        plots.plot_heatmap(fig,ax,df,grid_props,norm_data=st.session_state["toggleNorm"])
+        st.pyplot(fig)
 
     # Download data
     table=mst.convert_df(df)

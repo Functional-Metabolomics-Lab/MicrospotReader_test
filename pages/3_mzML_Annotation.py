@@ -11,7 +11,7 @@ import numpy as np
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()
-
+st.session_state["merge_state"]=False
 # Displays data that has been saved in the current session in tabular format.
 mst.datainfo()
 

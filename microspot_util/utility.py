@@ -197,7 +197,7 @@ class spot:
     |row_name|Name of Row|
     |rt|Retention Time of Spot in s|
     """
-    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan,sample_type="Sample") -> None:
+    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan,sample_type:str="Sample",norm_int:float=np.nan) -> None:
         self.x=x
         self.y=y
         self.rad=rad
@@ -209,6 +209,7 @@ class spot:
         self.row_name=row_name
         self.rt=rt
         self.type=sample_type
+        self.norm_int=norm_int
     
     def assign_halo(self,halo_list:list,dist_thresh:float=14.73402725) -> None:
         """
@@ -226,7 +227,7 @@ class spot:
             if np.linalg.norm(np.array((h.x,h.y))-np.array((self.x,self.y)))<dist_thresh:
                 self.halo=h.rad
             
-    def get_intensity(self,img:np.array) -> None:
+    def get_intensity(self,img:np.array,rad:int=None) -> None:
         """
         ## Description
         Determines the average pixel-intensity of a spot in an image.
@@ -236,14 +237,20 @@ class spot:
         |Parameter|Type|Description|
         |---|---|---|
         |img|np.array|Image to extract spot-intensity from|
+        |rad|int|radius to be used for intensity determination, if None or 0: use the radius determined by spot-detection|
         
         ## Output
 
         Avgerage intensity of pixels in spot.
         """
+        if rad == None or rad == 0:
+            radius=self.rad
+        else:
+            radius=rad
+
         try:
             # Indices of all pixels part of the current spot
-            rr,cc=skimage.draw.disk((self.y,self.x),self.rad)
+            rr,cc=skimage.draw.disk((self.y,self.x),radius)
             # Mean intensity of all pixels within the spot
             self.int=img[rr,cc].sum()/len(rr)
             return self.int
@@ -275,7 +282,8 @@ class spot:
                                              "y_coord":self.y,
                                              "radius":self.rad,
                                              "halo":self.halo,
-                                             "spot_intensity:":self.int,
+                                             "spot_intensity":self.int,
+                                             "norm_intensity":self.norm_int,
                                              "note":self.note,
                                              "RT":self.rt,
                                              }).to_frame().T],ignore_index=True)
@@ -315,7 +323,7 @@ class spot:
 
     @staticmethod
     @st.cache_data
-    def detect(gray_img:np.array,spot_nr:int,canny_sig:int=10,canny_lowthresh:float=0.001,canny_highthresh:float=0.001,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.3) -> list:
+    def detect(gray_img:np.array,spot_nr:int,canny_sig:int=10,canny_lowthresh:float=0.001,canny_highthresh:float=0.001,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.3,small_rad:int=20,large_rad:int=30) -> list:
         """
         ## Description
 
@@ -333,6 +341,8 @@ class spot:
         |hough_minx|int|Miniumum distance in x direction between 2 peaks during circle detection using hough transform|
         |hough_miny|int|Miniumum distance in y direction between 2 peaks during circle detection using hough transform|
         |hough_thresh|int|threshold of peak-intensity during circle detection using hough transform as fraction of maximum value|
+        |small_rad|int|Smallest tested radius|
+        |large_rad|int|Largest tested radius|
 
         ## Output
 
@@ -348,7 +358,7 @@ class spot:
         )
 
         # Range of Radii that are tested during inital spotdetection.
-        tested_radii=np.arange(20,31)
+        tested_radii=np.arange(small_rad,large_rad+1)
 
         # Hough transform for a circle of the edge-image and peak detection to find circles in earlier defined range of radii.
         spot_hough=skimage.transform.hough_circle(edges,tested_radii)
@@ -449,6 +459,7 @@ class spot:
                               "radius":[i_spot.rad for i_spot in spot_list],
                               "halo":[i_spot.halo for i_spot in spot_list],
                               "spot_intensity":[i_spot.int for i_spot in spot_list],
+                              "norm_intensity":[i_spot.norm_int for i_spot in spot_list],
                               "note":[i_spot.note for i_spot in spot_list],
                               "RT":[i_spot.rt for i_spot in spot_list]})
         return spot_df
@@ -473,7 +484,18 @@ class spot:
         spot_list=[]
         
         for idx in df.index:
-            spot_list.append(spot(df.loc[idx,"x_coord"],df.loc[idx,"y_coord"],df.loc[idx,"radius"],df.loc[idx,"halo"],df.loc[idx,"spot_intensity"],df.loc[idx,"note"],df.loc[idx,"row"],df.loc[idx,"column"],df.loc[idx,"row_name"],df.loc[idx,"RT"],df.loc[idx,"type"]))
+            spot_list.append(spot(x=df.loc[idx,"x_coord"],
+                                  y=df.loc[idx,"y_coord"],
+                                  rad=df.loc[idx,"radius"],
+                                  halo=df.loc[idx,"halo"],
+                                  int=df.loc[idx,"spot_intensity"],
+                                  note=df.loc[idx,"note"],
+                                  row=df.loc[idx,"row"],
+                                  col=df.loc[idx,"column"],
+                                  row_name=df.loc[idx,"row_name"],
+                                  rt=df.loc[idx,"RT"],
+                                  sample_type=df.loc[idx,"type"],
+                                  norm_int=df.loc[idx,"norm_intensity"]))
         
         return spot_list
 
@@ -612,6 +634,25 @@ class spot:
         
         return sort_spots
     
+    @staticmethod
+    def normalize(spot_list:list) -> None:
+        """
+        ## Description
+
+        Normalizes all spot-intensties using the labeled controls. 
+
+        ## Input
+
+        |Parameter|Type|Description|
+        |---|---|---|
+        |spot_list|list|List of spot-objects to be normalized, must contain atleast one spot of the type "control"|
+        """
+
+        ctrl_mn=np.array([s.int for s in spot_list if s.type=="Control"]).mean()
+
+        for s in spot_list:
+            s.norm_int=s.int/ctrl_mn
+    
 class gridpoint:
     """
     ## Description
@@ -726,7 +767,7 @@ class gridline:
     
     @staticmethod
     @st.cache_data
-    def detect(img:np.array,max_tilt:int=5) -> list:
+    def detect(img:np.array,max_tilt:int=5,min_dist:int=80,threshold:float=0.2) -> list:
         """
         ## Description
 
@@ -738,6 +779,8 @@ class gridline:
         |---|---|---|
         |img|Array|np.array of an image containing gridpoints|
         |max_tilt|int|Maximum allowed tilt of the grid in degrees.|
+        |min_dist|int|Minumum distance between two detected lines|
+        |threshold|float|Fraction of max|
 
         ## Output
 
@@ -751,7 +794,7 @@ class gridline:
         line_img[:,np.r_[max_tilt:89-max_tilt,91+max_tilt:180-max_tilt]]=0
         
         # Detect lines in the hough transformed image.
-        accum,angle,distance=skimage.transform.hough_line_peaks(line_img,ang,dist,min_distance=80,threshold=0.2*line_img.max())
+        accum,angle,distance=skimage.transform.hough_line_peaks(line_img,ang,dist,min_distance=min_dist,threshold=threshold*line_img.max())
         
         # Saving all gridlines in a list
         gridlines=[gridline(a,d) for a,d in zip(angle,distance)]
@@ -794,7 +837,7 @@ class halo:
 
     @staticmethod
     @st.cache_data
-    def detect(img,canny_sig:float=3.52941866,canny_lowthresh:float=44.78445877,canny_highthresh:float=44.78445877,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.38546213):
+    def detect(img,canny_sig:float=3.52941866,canny_lowthresh:float=44.78445877,canny_highthresh:float=44.78445877,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.38546213,min_rad:int=40,max_rad:int=70):
         """
         ## Description
 
@@ -811,6 +854,8 @@ class halo:
         |hough_minx|int|Miniumum distance in x direction between 2 peaks during circle detection using hough transform|
         |hough_miny|int|Miniumum distance in y direction between 2 peaks during circle detection using hough transform|
         |hough_thresh|int|threshold of peak-intensity during circle detection using hough transform as fraction of maximum value|
+        |min_rad|int|Minimum tested radius|
+        |max_rad|int|Maximum tested radius|
 
         ## Output
 
@@ -826,7 +871,7 @@ class halo:
 
         # Canny edge detection and follow up circle detection using hough transform.
         halo_edge=skimage.feature.canny(halo_img,canny_sig,canny_lowthresh,canny_highthresh)
-        halo_radii=np.arange(40,70) # Radii tested for.
+        halo_radii=np.arange(min_rad,max_rad+1) # Radii tested for.
         halo_hough=skimage.transform.hough_circle(halo_edge,halo_radii)
 
         h_accum,h_x,h_y,h_radii=skimage.transform.hough_circle_peaks(

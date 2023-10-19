@@ -2,7 +2,34 @@
 
 # MicroSpot Reader
 
-This Repository contains the Notebooks required for quantitative analysis of MicroSpots.
+Web-App for the detection and quantification of Spots on a microfluidics device for the determination of bioactivity of HPLC-fractions in parallel to an HPLC-MS experiment.
+
+
+## Web-App
+
+The Web-App is based on streamlit and currently runs on the streamlit cloud service:
+
+[![Open Website!](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://uspotreader.streamlit.app/)
+
+### Local Installation:
+
+1. Clone this repository
+2. Install all packages from the `requirements.txt` file:
+
+`python -m pip install -r requirements.tyt`
+
+3. Open Windows Terminal and go to the main folder of the repository:
+
+`cd <filepath>`
+
+4. Start the App by running the following command:
+
+`streamlit run MicrospotReader_App.py`
+
+
+## Juypter Notebooks
+
+Additionally, this Repository contains Jupyter Notebooks in the `notebooks`-folder if you do not wish to use the Web-App:
 
 - `microspot_reader.ipynb`: Detection and analysis of MicroSpots as well as antimicrobial halos within an image. Determination of bioactivity.
 
