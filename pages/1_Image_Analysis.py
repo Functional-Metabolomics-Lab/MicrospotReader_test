@@ -15,6 +15,8 @@ with st.sidebar:
     if st.button("Start New Analysis!",use_container_width=True,type="primary"):
         st.session_state["analyze"]=False
         st.session_state["current_img"]=None
+        st.session_state["false_pos"]=[]
+        
 
     # Form to add spot-data from an image to the current session to be used later on.
     with st.form("Add to Session"):
@@ -146,16 +148,16 @@ if st.session_state["analyze"]==False:
 
             c1,c2=st.columns(2)
             with c1:
-                st.session_state["adv_settings"]["halo_det"]["low_rad"]=st.number_input("Smallest tested radius:",value=40,step=1,min_value=1)
-                st.session_state["adv_settings"]["halo_det"]["sigma"]=st.number_input("Sigma-value for gaussian blur:",min_value=1.0,max_value=20.0,value=3.52941866)
-                st.session_state["adv_settings"]["halo_det"]["low_edge"]=st.number_input("Edge-detection low threshold:",value=44.78445877,min_value=0.0)
-                st.session_state["adv_settings"]["halo_det"]["high_edge"]=st.number_input("Edge-detection high threshold:",value=44.78445877,min_value=0.0)
+                st.session_state["adv_settings"]["halo_det"]["low_rad"]=st.number_input("Smallest tested radius:",value=40,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["sigma"]=st.number_input("Sigma-value for gaussian blur:",min_value=1.0,max_value=20.0,value=3.52941866,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["low_edge"]=st.number_input("Edge-detection low threshold:",value=44.78445877,min_value=0.0,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["high_edge"]=st.number_input("Edge-detection high threshold:",value=44.78445877,min_value=0.0,disabled=not st.session_state["halo_toggle"])
 
             with c2:
-                st.session_state["adv_settings"]["halo_det"]["high_rad"]=st.number_input("Largest tested radius:",value=70,step=1,min_value=1)
-                st.session_state["adv_settings"]["halo_det"]["x_dist"]=st.number_input("Minimum x-distance between halos:",value=70,step=1,min_value=0)
-                st.session_state["adv_settings"]["halo_det"]["y_dist"]=st.number_input("Minimum y-distance between halos:",value=70,step=1,min_value=0)
-                st.session_state["adv_settings"]["halo_det"]["thresh"]=st.number_input("Spot-detection threshold:",value=0.38546213,min_value=0.0)
+                st.session_state["adv_settings"]["halo_det"]["high_rad"]=st.number_input("Largest tested radius:",value=70,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["x_dist"]=st.number_input("Minimum x-distance between halos:",value=70,step=1,min_value=0,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["y_dist"]=st.number_input("Minimum y-distance between halos:",value=70,step=1,min_value=0,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["thresh"]=st.number_input("Spot-detection threshold:",value=0.38546213,min_value=0.0,disabled=not st.session_state["halo_toggle"])
 
         with col1:
             # Start the image processing algorithm. Only activated if all settings have been set
@@ -242,9 +244,13 @@ if st.session_state["analyze"]==True:
                               max_rad=st.session_state["adv_settings"]["halo_det"]["high_rad"],
                               )
 
-        # Assign halos to their spot.
+        # Assign halos to their spot and remove false positives.
         for s in sort_spots:
             s.assign_halo(halos)
+            
+            if s.row_name+str(s.col) in st.session_state["false_pos"]:
+                s.halo=np.nan
+            
 
     # If controls are present, normalize the spot intensities 
     if len(st.session_state["ctrl_rows"]) != 0 or len(st.session_state["ctrl_cols"]) != 0:
@@ -256,12 +262,7 @@ if st.session_state["analyze"]==True:
         # Create a List of all indices for spots with detected Halos
         halo_list=[s.row_name+str(s.col) for s in sort_spots if s.halo>0]
         # UI Selection of false-positive halos
-        false_pos=st.multiselect("Remove false-positive Halos:",halo_list)
-
-        # If a spot was selected, remove the corresponding halo.
-        for s in sort_spots:
-            if s.row_name+str(s.col) in false_pos:
-                s.halo=np.nan
+        false_pos=st.multiselect("Remove false-positive Halos:",halo_list,key="false",on_change=mst.set_falsepos)
 
     # Tabs for all Results that are displayed
     tab1,tab2,tab3,tab4=st.tabs(["Image","Table","Heatmap", "Grid"])

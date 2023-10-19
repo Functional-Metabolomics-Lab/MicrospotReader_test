@@ -100,6 +100,10 @@ if st.session_state["merge_state"]==True:
     for spotlist in data_list:
         merged_spots.extend(spotlist)
     
+    # Extract information on first and last spot
+    first_spot=merged_spots[0].row_name+str(merged_spots[0].col)
+    last_spot=merged_spots[-1].row_name+str(merged_spots[-1].col)
+
     # Sorts the spots according to the settings
     msu.spot.sort_list(merged_spots,serpentine=st.session_state["serpentine"],inplace=True)
 
@@ -111,10 +115,6 @@ if st.session_state["merge_state"]==True:
     df=msu.spot.create_df(merged_spots)
     # stores current data in a session state
     st.session_state["current_merge"]=df
-    
-    # Extract information on first and last spot from spotlist (required for heatmap)
-    first_spot=merged_spots[0].row_name+str(merged_spots[0].col)
-    last_spot=merged_spots[-1].row_name+str(merged_spots[-1].col)
 
     # Dictionaries to convert Row-Letters into Row-Numbers and vice versa (required for heatmap)
     row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}

@@ -24,6 +24,7 @@ states={"analyze":False,            # State of image analysis -> False = not pro
         "ctrl_rows":[],             # Row-Indexes of spots to be labeled as controls
         "ctrl_cols":[],             # Column_Indexes of spots to be labeled as controls
         "halo_toggle":True,         # Enables Halo detection if true.
+        "false_pos":[],             # List of Spot-Indices with false-positive halos.
         }       
 
 def set_analyze_True():
@@ -134,3 +135,6 @@ def merge_settings():
 def reset_merge():
     # Callback function to reset the merge state
     st.session_state["merge_state"]=False
+
+def set_falsepos():
+    st.session_state["false_pos"]=st.session_state["false"]
