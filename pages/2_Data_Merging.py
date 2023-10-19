@@ -144,13 +144,9 @@ if st.session_state["merge_state"]==True:
 
     with t2:
         # display heatmap of merged data
-        c1,c2=st.columns(2)
-        with c1:
-            fig,ax=plt.subplots()
-            plots.plot_heatmap(fig,ax,df,grid_props,norm_data=st.session_state["toggleNorm"])
-            st.pyplot(fig)
-        with c2:
-            st.markdown("## Heatmap of Merged Data")
+        fig,ax=plt.subplots()
+        plots.plot_heatmap(fig,ax,df,grid_props,norm_data=st.session_state["toggleNorm"])
+        st.pyplot(fig)
 
     # Download data
     table=mst.convert_df(df)

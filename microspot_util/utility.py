@@ -227,7 +227,7 @@ class spot:
             if np.linalg.norm(np.array((h.x,h.y))-np.array((self.x,self.y)))<dist_thresh:
                 self.halo=h.rad
             
-    def get_intensity(self,img:np.array) -> None:
+    def get_intensity(self,img:np.array,rad:int=None) -> None:
         """
         ## Description
         Determines the average pixel-intensity of a spot in an image.
@@ -242,9 +242,14 @@ class spot:
 
         Avgerage intensity of pixels in spot.
         """
+        if rad == None:
+            radius=self.rad
+        else:
+            radius=rad
+
         try:
             # Indices of all pixels part of the current spot
-            rr,cc=skimage.draw.disk((self.y,self.x),self.rad)
+            rr,cc=skimage.draw.disk((self.y,self.x),radius)
             # Mean intensity of all pixels within the spot
             self.int=img[rr,cc].sum()/len(rr)
             return self.int

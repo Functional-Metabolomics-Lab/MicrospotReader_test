@@ -152,6 +152,7 @@ if st.session_state["analyze"]==False:
                 st.session_state["adv_settings"]["halo_det"]["sigma"]=st.number_input("Sigma-value for gaussian blur:",min_value=1.0,max_value=20.0,value=3.52941866,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["low_edge"]=st.number_input("Edge-detection low threshold:",value=44.78445877,min_value=0.0,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["high_edge"]=st.number_input("Edge-detection high threshold:",value=44.78445877,min_value=0.0,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["scaling"]=st.number_input("Scaling Factor:",value=50.0,min_value=0.0,disabled=not st.session_state["halo_toggle"])
 
             with c2:
                 st.session_state["adv_settings"]["halo_det"]["high_rad"]=st.number_input("Largest tested radius:",value=70,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
@@ -165,6 +166,9 @@ if st.session_state["analyze"]==False:
 
 # Initiates Analysis and displays results if Starts Analysis button has been pressed.
 if st.session_state["analyze"]==True:
+    
+    st.markdown("## Results")
+
     # Inital spot-detection.
     init_spots=msu.spot.detect(gray_img=st.session_state["img"],
                                spot_nr=st.session_state["grid"]["spot_nr"],
@@ -244,25 +248,30 @@ if st.session_state["analyze"]==True:
                               max_rad=st.session_state["adv_settings"]["halo_det"]["high_rad"],
                               )
 
-        # Assign halos to their spot and remove false positives.
+        # Assign halos to their spot and add the index of the spot to a list.
+        halo_list=[]
         for s in sort_spots:
             s.assign_halo(halos)
             
-            if s.row_name+str(s.col) in st.session_state["false_pos"]:
+            if s.halo>0:
+                halo_list.append(s.row_name+str(s.col))
+
+        # UI Selection of false-positive halos
+        false_pos=st.multiselect("Remove false-positive Halos:",halo_list)
+
+        for s in sort_spots:
+            # If a false-positive was selected, remove the corresponding halo.
+            if s.row_name+str(s.col) in false_pos:
                 s.halo=np.nan
-            
+
+            # Scale Intensity of spots with halos:
+            if s.halo>0:
+                s.int=s.halo/st.session_state["adv_settings"]["halo_det"]["scaling"]
+
 
     # If controls are present, normalize the spot intensities 
-    if len(st.session_state["ctrl_rows"]) != 0 or len(st.session_state["ctrl_cols"]) != 0:
+    if len(st.session_state["ctrl_rows"]) != 0 or len(st.session_state["ctrl_cols"])!=0:
         msu.spot.normalize(sort_spots)
-
-    st.markdown("## Results")
-
-    if st.session_state["halo_toggle"]==True:
-        # Create a List of all indices for spots with detected Halos
-        halo_list=[s.row_name+str(s.col) for s in sort_spots if s.halo>0]
-        # UI Selection of false-positive halos
-        false_pos=st.multiselect("Remove false-positive Halos:",halo_list,key="false",on_change=mst.set_falsepos)
 
     # Tabs for all Results that are displayed
     tab1,tab2,tab3,tab4=st.tabs(["Image","Table","Heatmap", "Grid"])
@@ -281,7 +290,7 @@ if st.session_state["analyze"]==True:
             plots.plot_result(fig,ax,st.session_state["img"],df,st.session_state["grid"])        
             st.pyplot(fig)
 
-    # Displays the Table containing all information on the spots
+    # Displays the Table containing all information of the spots
     with tab2:
         st.dataframe(df)
 
