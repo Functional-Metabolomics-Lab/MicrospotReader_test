@@ -237,12 +237,13 @@ class spot:
         |Parameter|Type|Description|
         |---|---|---|
         |img|np.array|Image to extract spot-intensity from|
+        |rad|int|radius to be used for intensity determination, if None or 0: use the radius determined by spot-detection|
         
         ## Output
 
         Avgerage intensity of pixels in spot.
         """
-        if rad == None:
+        if rad == None or rad == 0:
             radius=self.rad
         else:
             radius=rad
@@ -483,7 +484,18 @@ class spot:
         spot_list=[]
         
         for idx in df.index:
-            spot_list.append(spot(df.loc[idx,"x_coord"],df.loc[idx,"y_coord"],df.loc[idx,"radius"],df.loc[idx,"halo"],df.loc[idx,"spot_intensity"],df.loc[idx,"note"],df.loc[idx,"row"],df.loc[idx,"column"],df.loc[idx,"row_name"],df.loc[idx,"RT"],df.loc[idx,"type"],df.loc[idx,"norm_intensity"]))
+            spot_list.append(spot(x=df.loc[idx,"x_coord"],
+                                  y=df.loc[idx,"y_coord"],
+                                  rad=df.loc[idx,"radius"],
+                                  halo=df.loc[idx,"halo"],
+                                  int=df.loc[idx,"spot_intensity"],
+                                  note=df.loc[idx,"note"],
+                                  row=df.loc[idx,"row"],
+                                  col=df.loc[idx,"column"],
+                                  row_name=df.loc[idx,"row_name"],
+                                  rt=df.loc[idx,"RT"],
+                                  sample_type=df.loc[idx,"type"],
+                                  norm_int=df.loc[idx,"norm_intensity"]))
         
         return spot_list
 

@@ -8,6 +8,7 @@ import microspot_util.plots as plots
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()
+st.session_state["merge_state"]=False
 
 # Add page specific utility to sidebar.
 with st.sidebar:
@@ -82,8 +83,8 @@ if st.session_state["analyze"]==False:
                 st.session_state["grid"]=msu.conv_gridinfo(first_spot,last_spot,row_conv)
             
                 # Labels the selected rows and columns as controls. All other spots are labeled as Samples
-                ctrl_rows=st.multiselect('Select Rows to be labeled as "control"',[row_conv_inv[i].upper() for i in range(st.session_state["grid"]["rows"]["bounds"][0],st.session_state["grid"]["rows"]["bounds"][1]+1)],key="ctrl_rows")
-                ctrl_cols=st.multiselect('Select Columns to be labeled as "control"',list(range(st.session_state["grid"]["columns"]["bounds"][0],st.session_state["grid"]["columns"]["bounds"][1]+1)),key="ctrl_cols")
+                st.session_state["ctrl_rows"]=st.multiselect('Select Rows to be labeled as "control"',[row_conv_inv[i].upper() for i in range(st.session_state["grid"]["rows"]["bounds"][0],st.session_state["grid"]["rows"]["bounds"][1]+1)])
+                st.session_state["ctrl_cols"]=st.multiselect('Select Columns to be labeled as "control"',list(range(st.session_state["grid"]["columns"]["bounds"][0],st.session_state["grid"]["columns"]["bounds"][1]+1)))
 
             # Disables start analysis button and sends out warning if not all settings have been set
             else:
@@ -140,7 +141,7 @@ if st.session_state["analyze"]==False:
             with c1:
                 st.session_state["adv_settings"]["spot_misc"]["acceptance"]=st.number_input("Distance from grid-point for acceptance of spot:",value=10,min_value=1,step=1)
             with c2:
-                st.session_state["adv_settings"]["spot_misc"]["int_rad"]=st.number_input("Disk-Radius for spot-intensity calculation:",value=25,min_value=1,step=1)
+                st.session_state["adv_settings"]["spot_misc"]["int_rad"]=st.number_input("Disk-Radius for spot-intensity calculation:",value=25,min_value=0,step=1)
             
             st.divider()
 
@@ -231,7 +232,7 @@ if st.session_state["analyze"]==True:
 
     # Calcualte the spot intensity and label controls
     for s in sort_spots:
-        s.get_intensity(st.session_state["img"])
+        s.get_intensity(st.session_state["img"],st.session_state["adv_settings"]["spot_misc"]["int_rad"])
         if s.row_name in st.session_state["ctrl_rows"] or s.col in st.session_state["ctrl_cols"]:
             s.type="Control"
 

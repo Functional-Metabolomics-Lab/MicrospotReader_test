@@ -71,6 +71,7 @@ def apply_datachange():
     st.session_state["merge_df"]=st.session_state["edit_merge"]
     # Disables warning
     st.session_state["change_warning"]=False
+    reset_merge()
 
 def del_sessiondata():
     # Removes all selected rows from img_df and merge_df
@@ -81,6 +82,7 @@ def del_sessiondata():
     # Removes selected data from the dictionaries storing the actual lists
     st.session_state["img_data"]={st.session_state["img_df"].loc[idx,"id"]: st.session_state["img_data"][st.session_state["img_df"].loc[idx,"id"]] for idx in st.session_state["img_df"].index}
     st.session_state["merge_data"]={st.session_state["merge_df"].loc[idx,"id"]: st.session_state["merge_data"][st.session_state["merge_df"].loc[idx,"id"]] for idx in st.session_state["merge_df"].index}
+    reset_merge()
 
 def datachange_warning():
     # Callback function, activates the warning upon changes to the stored data.
