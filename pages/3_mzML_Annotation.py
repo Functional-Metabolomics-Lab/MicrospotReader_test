@@ -102,7 +102,7 @@ with c2:
     # If Downloadbutton is enabled, show it and allow the download
     if st.session_state["mzml_download"]==False:
         with open("output.mzML", "rb") as mzml_file:
-            st.download_button(label="Download mzML File",data=mzml_file,mime="mzML",use_container_width=True)
+            st.download_button(label="Download mzML File",data=mzml_file,mime=".mzML",use_container_width=True,file_name="annotated_file.mzML")
 
 # Display the TIC-Chromatogram aswell as the bioactivity chromatogram, derived from the mzml file.
 if st.session_state["annot_mzml"] is not None:

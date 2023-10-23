@@ -487,7 +487,7 @@ class spot:
             spot_list.append(spot(x=df.loc[idx,"x_coord"],
                                   y=df.loc[idx,"y_coord"],
                                   rad=df.loc[idx,"radius"],
-                                  halo=df.loc[idx,"halo"],
+                                  halo_rad=df.loc[idx,"halo"],
                                   int=df.loc[idx,"spot_intensity"],
                                   note=df.loc[idx,"note"],
                                   row=df.loc[idx,"row"],
