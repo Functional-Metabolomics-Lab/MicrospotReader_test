@@ -837,7 +837,7 @@ class halo:
 
     @staticmethod
     @st.cache_data
-    def detect(img,canny_sig:float=3.52941866,canny_lowthresh:float=44.78445877,canny_highthresh:float=44.78445877,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.38546213,min_rad:int=40,max_rad:int=70):
+    def detect_old(img,canny_sig:float=3.52941866,canny_lowthresh:float=44.78445877,canny_highthresh:float=44.78445877,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.38546213,min_rad:int=40,max_rad:int=70):
         """
         ## Description
 
@@ -885,6 +885,60 @@ class halo:
         halo_list=[halo(x,y,rad) for x,y,rad in zip(h_x,h_y,h_radii)]
         return halo_list
     
+    @staticmethod
+    @st.cache_data
+    def detect(img,min_rad:int=40,max_rad:int=100,min_xdist:int=70,min_ydist:int=70,thresh:float=0.2,min_obj_size:int=800):
+        """
+        ## Description
+
+        Crude detection of halos in a grayscale image.
+
+        ## Input
+
+        |Parameter|Type|Description|
+        |---|---|---|
+        |img|np.array|Grayscale np.array of image to be analyzed|
+        |min_obj_size|int|Minimum size of objects after creation of mask, anything smaller will be removed|
+        |min_xdist|int|Miniumum distance in x direction between 2 peaks during circle detection using hough transform|
+        |min_ydist|int|Miniumum distance in y direction between 2 peaks during circle detection using hough transform|
+        |thresh|int|threshold of peak-intensity during circle detection using hough transform as fraction of maximum value|
+        |min_rad|int|Minimum tested radius|
+        |max_rad|int|Maximum tested radius|
+
+        ## Output
+
+        List of detected halos as halo-objects
+        """
+
+        # Perform morphological reconstruction
+        mask=np.copy(img)
+        seed=np.copy(img)
+        seed[1:-1,1:-1]=img.min()
+        dilated=skimage.morphology.reconstruction(seed,mask,method="dilation")
+        recon=img-dilated
+        
+        # Threshold the reconstructed image and remove noise
+        bin_recon=recon>skimage.filters.threshold_otsu(recon)
+        bin_recon=skimage.morphology.remove_small_objects(bin_recon,min_size=min_obj_size)
+        # Biary opening to open holes for halos containing spots
+        bin_recon=skimage.morphology.binary_opening(bin_recon,skimage.morphology.disk(5))
+
+        # Generate a Skeleton of the binary reconstruction to get a single circle for each halo
+        skel=skimage.morphology.skeletonize(bin_recon)
+        # Dilate the skeleton to have some tolerance for circle detection
+        skel=skimage.morphology.binary_dilation(skel,skimage.morphology.disk(3))
+
+        test_radii=np.arange(min_rad,max_rad+1)
+        # Circle detection by hough transform.
+        halo_hough=skimage.transform.hough_circle(skel,test_radii)
+        accums, cx, cy, radii=skimage.transform.hough_circle_peaks(halo_hough,test_radii, 
+                                                                    min_xdistance=min_xdist,
+                                                                    min_ydistance=min_ydist,
+                                                                    threshold=thresh*halo_hough.max())
+
+        halo_list=[halo(x,y,rad) for x,y,rad in zip(cx,cy,radii)]
+        return halo_list
+
     @staticmethod
     def create_df(halo_list:list) -> pd.DataFrame:
         """

@@ -150,16 +150,20 @@ if st.session_state["analyze"]==False:
             c1,c2=st.columns(2)
             with c1:
                 st.session_state["adv_settings"]["halo_det"]["low_rad"]=st.number_input("Smallest tested radius:",value=40,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
-                st.session_state["adv_settings"]["halo_det"]["sigma"]=st.number_input("Sigma-value for gaussian blur:",min_value=1.0,max_value=20.0,value=3.52941866,disabled=not st.session_state["halo_toggle"])
-                st.session_state["adv_settings"]["halo_det"]["low_edge"]=st.number_input("Edge-detection low threshold:",value=44.78445877,min_value=0.0,disabled=not st.session_state["halo_toggle"])
-                st.session_state["adv_settings"]["halo_det"]["high_edge"]=st.number_input("Edge-detection high threshold:",value=44.78445877,min_value=0.0,disabled=not st.session_state["halo_toggle"])
+                # st.session_state["adv_settings"]["halo_det"]["sigma"]=st.number_input("Sigma-value for gaussian blur:",min_value=1.0,max_value=20.0,value=3.52941866,disabled=not st.session_state["halo_toggle"])
+                # st.session_state["adv_settings"]["halo_det"]["low_edge"]=st.number_input("Edge-detection low threshold:",value=44.78445877,min_value=0.0,disabled=not st.session_state["halo_toggle"])
+                # st.session_state["adv_settings"]["halo_det"]["high_edge"]=st.number_input("Edge-detection high threshold:",value=44.78445877,min_value=0.0,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["thresh"]=st.number_input("Spot-detection threshold:",value=0.2,min_value=0.0,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["min_obj"]=st.number_input("Minimum Object Size:",value=800,min_value=0,step=1,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["scaling"]=st.number_input("Scaling Factor:",value=50.0,min_value=0.0,disabled=not st.session_state["halo_toggle"])
 
+
             with c2:
-                st.session_state["adv_settings"]["halo_det"]["high_rad"]=st.number_input("Largest tested radius:",value=70,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
+                # st.session_state["adv_settings"]["halo_det"]["high_rad"]=st.number_input("Largest tested radius:",value=70,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["high_rad"]=st.number_input("Largest tested radius:",value=100,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["x_dist"]=st.number_input("Minimum x-distance between halos:",value=70,step=1,min_value=0,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["y_dist"]=st.number_input("Minimum y-distance between halos:",value=70,step=1,min_value=0,disabled=not st.session_state["halo_toggle"])
-                st.session_state["adv_settings"]["halo_det"]["thresh"]=st.number_input("Spot-detection threshold:",value=0.38546213,min_value=0.0,disabled=not st.session_state["halo_toggle"])
+                # st.session_state["adv_settings"]["halo_det"]["thresh"]=st.number_input("Spot-detection threshold:",value=0.38546213,min_value=0.0,disabled=not st.session_state["halo_toggle"])
 
         with col1:
             # Start the image processing algorithm. Only activated if all settings have been set
@@ -239,14 +243,12 @@ if st.session_state["analyze"]==True:
     if st.session_state["halo_toggle"]==True:
         # Detect Halos using the halo.detect method.
         halos=msu.halo.detect(img=st.session_state["img"],
-                              canny_sig=st.session_state["adv_settings"]["halo_det"]["sigma"],
-                              canny_lowthresh=st.session_state["adv_settings"]["halo_det"]["low_edge"],
-                              canny_highthresh=st.session_state["adv_settings"]["halo_det"]["high_edge"],
-                              hough_minx=st.session_state["adv_settings"]["halo_det"]["x_dist"],
-                              hough_miny=st.session_state["adv_settings"]["halo_det"]["y_dist"],
-                              hough_thresh=st.session_state["adv_settings"]["halo_det"]["thresh"],
+                              min_xdist=st.session_state["adv_settings"]["halo_det"]["x_dist"],
+                              min_ydist=st.session_state["adv_settings"]["halo_det"]["y_dist"],
+                              thresh=st.session_state["adv_settings"]["halo_det"]["thresh"],
                               min_rad=st.session_state["adv_settings"]["halo_det"]["low_rad"],
                               max_rad=st.session_state["adv_settings"]["halo_det"]["high_rad"],
+                              min_obj_size=st.session_state["adv_settings"]["halo_det"]["min_obj"]
                               )
 
         # Assign halos to their spot and add the index of the spot to a list.
