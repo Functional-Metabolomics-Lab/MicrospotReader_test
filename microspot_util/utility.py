@@ -101,7 +101,7 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
     return gray_img
 
 
-def annotate_mzml(exp,spot_df,spot_mz, intensity_scalingfactor):
+def annotate_mzml(exp:oms.MSExperiment(),spot_df:pd.DataFrame(),spot_mz:float, intensity_scalingfactor:float,norm_data:bool=True):
     """
     ## Description
     Sets the value of a specified m/z in an MS1 spectrum at a specific retention time to a scaled and interpolated spot-intensity value based off of a DataFrame containing RT-matched spot intensities.
@@ -114,6 +114,7 @@ def annotate_mzml(exp,spot_df,spot_mz, intensity_scalingfactor):
     |spot_df|DataFrame|DataFrame containing Retention Time matched spot-intensities|
     |spot_mz|float|m/z value to be set to the interpolated spot-intensity|
     |intensity_scalingfactor|float|Value by which to scale the interpolated spotintensity for MS1 annotation|
+    |norm_data|bool|Uses Normalized Spot-Data if set to True|
     """
     spots=spot_df.sort_values("RT")
 
@@ -141,8 +142,13 @@ def annotate_mzml(exp,spot_df,spot_mz, intensity_scalingfactor):
                 # If there is no higher RT in the spotlist, take the next smallest one.
                 next_spot=prev_spot
             
-            # Interpolate the spot intensity for the RT value
-            interp_intensity=np.interp(rt_val,[prev_spot["RT"],next_spot["RT"]],[prev_spot["spot_intensity"],next_spot["spot_intensity"]])
+            if norm_data==False:
+                # Interpolate the spot intensity for the RT value
+                interp_intensity=np.interp(rt_val,[prev_spot["RT"],next_spot["RT"]],[prev_spot["spot_intensity"],next_spot["spot_intensity"]])
+            
+            elif norm_data==True:
+                # Interpolate the spot intensity for the RT value
+                interp_intensity=np.interp(rt_val,[prev_spot["RT"],next_spot["RT"]],[prev_spot["norm_intensity"],next_spot["norm_intensity"]])
             
             # Append the array of peak-m/z values with the one specified to save the spot intensity
             peak_mz=np.append(spectrum.get_peaks()[0],spot_mz)

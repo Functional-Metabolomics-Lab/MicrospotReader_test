@@ -5,7 +5,7 @@ import microspot_util.streamlit as mst
 import microspot_util.plots as plots
 import pyopenms as oms
 import io
-from pyopenms.plotting import plot_spectrum,plot_chromatogram
+from pyopenms.plotting import plot_chromatogram
 import matplotlib.pyplot as plt
 import tempfile
 
