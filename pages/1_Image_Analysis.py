@@ -145,10 +145,9 @@ if st.session_state["analyze"]==False:
             
             st.divider()
 
-            st.markdown("__Halo-Detection__")
-
             c1,c2=st.columns(2)
             with c1:
+                st.markdown("__Halo-Detection__")
                 st.session_state["adv_settings"]["halo_det"]["low_rad"]=st.number_input("Smallest tested radius:",value=40,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
                 # st.session_state["adv_settings"]["halo_det"]["sigma"]=st.number_input("Sigma-value for gaussian blur:",min_value=1.0,max_value=20.0,value=3.52941866,disabled=not st.session_state["halo_toggle"])
                 # st.session_state["adv_settings"]["halo_det"]["low_edge"]=st.number_input("Edge-detection low threshold:",value=44.78445877,min_value=0.0,disabled=not st.session_state["halo_toggle"])
@@ -159,6 +158,7 @@ if st.session_state["analyze"]==False:
 
 
             with c2:
+                st.session_state["adv_settings"]["halo_det"]["tog_scale"]=st.toggle("Scale Halos to normalized Data",value=True)
                 # st.session_state["adv_settings"]["halo_det"]["high_rad"]=st.number_input("Largest tested radius:",value=70,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["high_rad"]=st.number_input("Largest tested radius:",value=100,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["x_dist"]=st.number_input("Minimum x-distance between halos:",value=70,step=1,min_value=0,disabled=not st.session_state["halo_toggle"])
@@ -234,11 +234,15 @@ if st.session_state["analyze"]==True:
                                 row_start=st.session_state["grid"]["rows"]["bounds"][0],
                                 col_start=st.session_state["grid"]["columns"]["bounds"][0])
 
-    # Calcualte the spot intensity and label controls
+    # Calculate the spot intensity and label controls
     for s in sort_spots:
         s.get_intensity(st.session_state["img"],st.session_state["adv_settings"]["spot_misc"]["int_rad"])
         if s.row_name in st.session_state["ctrl_rows"] or s.col in st.session_state["ctrl_cols"]:
             s.type="Control"
+
+    # If controls are present, normalize the spot intensities 
+    if len(st.session_state["ctrl_rows"]) != 0 or len(st.session_state["ctrl_cols"])!=0:
+        msu.spot.normalize(sort_spots)
 
     if st.session_state["halo_toggle"]==True:
         # Detect Halos using the halo.detect method.
@@ -249,7 +253,7 @@ if st.session_state["analyze"]==True:
                               min_rad=st.session_state["adv_settings"]["halo_det"]["low_rad"],
                               max_rad=st.session_state["adv_settings"]["halo_det"]["high_rad"],
                               min_obj_size=st.session_state["adv_settings"]["halo_det"]["min_obj"]
-                              )
+                              )  
 
         # Assign halos to their spot and add the index of the spot to a list.
         halo_list=[]
@@ -268,13 +272,11 @@ if st.session_state["analyze"]==True:
                 s.halo=np.nan
 
             # Scale Intensity of spots with halos:
-            if s.halo>0:
+            if s.halo>0 and st.session_state["adv_settings"]["halo_det"]["tog_scale"]==False:
                 s.int=s.halo/st.session_state["adv_settings"]["halo_det"]["scaling"]
 
-
-    # If controls are present, normalize the spot intensities 
-    if len(st.session_state["ctrl_rows"]) != 0 or len(st.session_state["ctrl_cols"])!=0:
-        msu.spot.normalize(sort_spots)
+            elif s.halo>0 and st.session_state["adv_settings"]["halo_det"]["tog_scale"]==True:
+                s.norm_int=s.halo/st.session_state["adv_settings"]["halo_det"]["scaling"]
 
     # Tabs for all Results that are displayed
     tab1,tab2,tab3,tab4=st.tabs(["Image","Table","Heatmap", "Grid"])
