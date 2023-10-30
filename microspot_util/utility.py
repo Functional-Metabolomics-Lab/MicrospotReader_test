@@ -141,7 +141,16 @@ def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,windo
     rmsd_noise=10
     while rmsd_noise>conv_noise:
         sg_filt=scipy.signal.savgol_filter(baseline_noise,window_noise,poly_noise)
-        baseline_new=np.maximum(np.minimum(sg_filt,baseline_noise),baseline_level)
+        # baseline_new=np.maximum(np.minimum(test,baseline_noise),baseline_level)
+        baseline=np.minimum(sg_filt,baseline_noise)        
+        baseline_new=[]
+        for n,l in zip(baseline,baseline_level):
+            if np.abs(n-l)>10*baseline_level.std():
+                baseline_new.append(l)
+            else:
+                baseline_new.append(n)
+        baseline_new=np.array(baseline_new)
+
         rmsd_noise=np.sqrt(np.mean((baseline_new-baseline_noise)**2))
         baseline_noise=baseline_new
 
