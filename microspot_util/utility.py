@@ -16,6 +16,7 @@ import numpy as np
 from pathlib import Path
 import streamlit as st
 import pyopenms as oms
+import scipy
 
 @st.cache_data
 def conv_gridinfo(point1:str,point2:str,conv_dict:dict) -> dict:
@@ -100,6 +101,52 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
     
     return gray_img
 
+def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,window_lvl:int=100,window_noise:int=5,poly_lvl:int=2,poly_noise:int=2):
+    """
+    ## Description
+    Baseline correction of an input array using a modified version of the asymmetric least squares method.
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |array|Seq, Array|Sequence to be baseline corrected|
+    |conv_lvl|float|convergence criteria for the determination of the baseline level|
+    |conv_noise|float|convergence criteria for the determination of the baseline containing noise|
+    |window_lvl|int|Window to be used for the savitzky-golay filter for detection of the baseline level|
+    |window_noise|int|Window to be used for the savitzky-golay filter for detection of the baseline containing noise|
+    |poly_lvl|int|order of the polynomial used to fit the data for baseline level detection|
+    |poly_noise|int|order of the polynomial used to fit the data for detection of baseline containing noise|
+
+    ## Returns
+    Tuple of the values for the baseline aswell as the corrected baseline vales
+    """
+
+    # The algorithm is essentially performed twice: once to determine the level of the baseline and once to actually smooth the chromatogram. The first step is important as sometimes the savgol_filter would dip way below the actual baseline leading to artefact-peaks if the baseline-correction was just performed with that result.
+    # This way the detected baseline cannot dip below the initally detected level, removing the artefact peaks.
+
+    baseline_noise=array.copy()
+    baseline_level=array.copy()
+
+    # First time running the algo with a large window size to simply detect the general level of the baseline.
+    rmsd_lvl=10
+    while rmsd_lvl>conv_lvl:
+        sg_filt=scipy.signal.savgol_filter(baseline_level,window_lvl,poly_lvl)
+        baseline_new=np.minimum(sg_filt,baseline_level)
+        rmsd_lvl=np.sqrt(np.mean((baseline_new-baseline_level)**2))
+        baseline_level=baseline_new
+
+    # Second time running the algo to actually be able to filter out the noise. 
+    # Note that for the new baseline first the filter result is compared to the previous baseline to find the minimum, this way peaks are removed from the baseline. Then the result is compared to the coarse baseline level to find areas that deviate too much.
+    rmsd_noise=10
+    while rmsd_noise>conv_noise:
+        sg_filt=scipy.signal.savgol_filter(baseline_noise,window_noise,poly_noise)
+        baseline_new=np.maximum(np.minimum(sg_filt,baseline_noise),baseline_level)
+        rmsd_noise=np.sqrt(np.mean((baseline_new-baseline_noise)**2))
+        baseline_noise=baseline_new
+
+    corr_ints=array-baseline_noise
+    return baseline_noise,corr_ints
 
 def annotate_mzml(exp:oms.MSExperiment(),spot_df:pd.DataFrame(),spot_mz:float, intensity_scalingfactor:float,norm_data:bool=True):
     """
