@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import microspot_util.plots as plots
 import microspot_util.streamlit as mst
 import microspot_util as msu
+import numpy as np
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()
@@ -113,6 +114,8 @@ if st.session_state["merge_state"]==True:
 
     # creates a dataframe for download and visualization
     df=msu.spot.create_df(merged_spots)
+    
+    df.norm_intensity,baseline=msu.baseline_correction(df["norm_intensity"])
     # stores current data in a session state
     st.session_state["current_merge"]=df
 

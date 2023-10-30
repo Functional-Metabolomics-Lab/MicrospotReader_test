@@ -101,7 +101,7 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
     
     return gray_img
 
-def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,window_lvl:int=100,window_noise:int=5,poly_lvl:int=2,poly_noise:int=2):
+def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,window_lvl:int=100,window_noise:int=5,poly_lvl:int=2,poly_noise:int=3):
     """
     ## Description
     Baseline correction of an input array using a modified version of the asymmetric least squares method.
