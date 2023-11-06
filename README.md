@@ -14,20 +14,26 @@ The Web-App is based on streamlit and currently runs on the streamlit cloud serv
 ### Local Installation:
 
 1. Clone this repository
-2. Install all packages from the `requirements.txt` file:
-
-`python -m pip install -r requirements.txt`
-
-3. Open Windows Terminal and go to the main folder of the repository:
+2. Open Windows Terminal and go to the main folder of the repository:
 
 `cd <filepath>`
 
-4. Start the App by running the following command:
+3. Create and activate a new python environment using Python 3.11 (example using anaconda):
+
+`conda create --name microspotreader python=3.11`
+
+`conda activate microspotreader`
+
+4. Install all packages from the `requirements.txt` file:
+
+`python -m pip install -r requirements.txt`
+
+5. Start the App by running the following command:
 
 `streamlit run MicrospotReader_App.py`
 
 
-## Juypter Notebooks
+## Jupyter Notebooks
 
 Additionally, this Repository contains Jupyter Notebooks in the `notebooks`-folder if you do not wish to use the Web-App:
 
