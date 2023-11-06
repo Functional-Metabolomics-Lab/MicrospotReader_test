@@ -206,12 +206,13 @@ def annotate_mzml(exp:oms.MSExperiment(),spot_df:pd.DataFrame(),spot_mz:float, i
                 # Interpolate the spot intensity for the RT value
                 interp_intensity=np.interp(rt_val,[prev_spot["RT"],next_spot["RT"]],[prev_spot["norm_intensity"],next_spot["norm_intensity"]])
             
-            # Append the array of peak-m/z values with the one specified to save the spot intensity
-            peak_mz=np.append(spectrum.get_peaks()[0],spot_mz)
-            # Append the array of peak-intensities with the scaled version of the interpolated spot intensity
-            peak_int=np.append(spectrum.get_peaks()[1],interp_intensity*intensity_scalingfactor)
-            # Save the new peak arrays in the spectrum.
-            spectrum.set_peaks((peak_mz,peak_int))
+            if interp_intensity>0:
+                # Append the array of peak-m/z values with the one specified to save the spot intensity
+                peak_mz=np.append(spectrum.get_peaks()[0],spot_mz)
+                # Append the array of peak-intensities with the scaled version of the interpolated spot intensity
+                peak_int=np.append(spectrum.get_peaks()[1],interp_intensity*intensity_scalingfactor)
+                # Save the new peak arrays in the spectrum.
+                spectrum.set_peaks((peak_mz,peak_int))
         
         # Append current spectrum to the modified list of spectra
         spec_list.append(spectrum)

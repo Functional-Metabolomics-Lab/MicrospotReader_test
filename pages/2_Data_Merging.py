@@ -115,7 +115,7 @@ if st.session_state["merge_state"]==True:
     # creates a dataframe for download and visualization
     df=msu.spot.create_df(merged_spots)
     
-    df.norm_intensity,baseline=msu.baseline_correction(df["norm_intensity"])
+    test,df.norm_intensity=msu.baseline_correction(df["norm_intensity"])
     # stores current data in a session state
     st.session_state["current_merge"]=df
 
