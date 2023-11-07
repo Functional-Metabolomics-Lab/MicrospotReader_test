@@ -154,7 +154,7 @@ if st.session_state["analyze"]==False:
                 # st.session_state["adv_settings"]["halo_det"]["high_edge"]=st.number_input("Edge-detection high threshold:",value=44.78445877,min_value=0.0,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["thresh"]=st.number_input("Spot-detection threshold:",value=0.2,min_value=0.0,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["min_obj"]=st.number_input("Minimum Object Size:",value=800,min_value=0,step=1,disabled=not st.session_state["halo_toggle"])
-                st.session_state["adv_settings"]["halo_det"]["scaling"]=st.number_input("Scaling Factor:",value=50.0,min_value=0.0,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["scaling"]=st.number_input("Scaling Factor:",value=30.0,min_value=0.0,disabled=not st.session_state["halo_toggle"])
 
 
             with c2:
@@ -243,10 +243,10 @@ if st.session_state["analyze"]==True:
     # If controls are present, normalize the spot intensities 
     if len(st.session_state["ctrl_rows"]) != 0 or len(st.session_state["ctrl_cols"])!=0:
         msu.spot.normalize(sort_spots)
-        st.session_state["norm"]==True
+        st.session_state["norm"]=True
     
     else:
-        st.session_state["norm"]==False
+        st.session_state["norm"]=False
 
     if st.session_state["halo_toggle"]==True:
         # Detect Halos using the halo.detect method.
