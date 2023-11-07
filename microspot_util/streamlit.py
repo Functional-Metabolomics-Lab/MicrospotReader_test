@@ -24,6 +24,7 @@ states={"analyze":False,            # State of image analysis -> False = not pro
         "ctrl_rows":[],             # Row-Indexes of spots to be labeled as controls
         "ctrl_cols":[],             # Column_Indexes of spots to be labeled as controls
         "halo_toggle":True,         # Enables Halo detection if true.
+        "norm":False,               # Keeps track of wheter data has been normalized during image analysis.
         }       
 
 def set_analyze_True():

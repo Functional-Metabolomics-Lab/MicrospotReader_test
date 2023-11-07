@@ -243,6 +243,10 @@ if st.session_state["analyze"]==True:
     # If controls are present, normalize the spot intensities 
     if len(st.session_state["ctrl_rows"]) != 0 or len(st.session_state["ctrl_cols"])!=0:
         msu.spot.normalize(sort_spots)
+        st.session_state["norm"]==True
+    
+    else:
+        st.session_state["norm"]==False
 
     if st.session_state["halo_toggle"]==True:
         # Detect Halos using the halo.detect method.
@@ -305,7 +309,7 @@ if st.session_state["analyze"]==True:
         with col1:
             # Display Image and corresponding Heatmap
             fig,ax=plt.subplots()
-            plots.plot_heatmap(fig,ax,df,st.session_state["grid"])
+            plots.plot_heatmap(fig,ax,df,st.session_state["grid"],st.session_state["norm"])
             st.pyplot(fig)
     
     # Displays the detected grid.
