@@ -129,9 +129,39 @@ The fourth tab of the _Results-View_ shows the image overlayed with the detected
 
 ![Example of a Grid-Overlay](assets/userguide/example_grid.png)
 
-A faulty grid leads to mistakes during spot-correction. Spot-correction relies on the grid to remove spots that lie too far from intersecting grid-lines. Additionally, intersections that do not yet have a detected spot in close proximity, will be used to backfill missing spots. Therefore if the grid is either missing, or contains too many lines, either too many or too few spots will be left after spot-correction.
+A faulty grid leads to mistakes during spot-correction. Spot-correction relies on the grid to remove spots that lie too far from intersecting grid-lines. Additionally, intersections that do not yet have a detected spot in close proximity, will be used to backfill missing spots. Therefore if the grid is either missing or contains too many lines, either too many or too few spots will be left after spot-correction.
 
 ### Advanced Settings
+
+#### Initial spot detection
+
+![Advanced Settings: Initial spot detection](assets/userguide/adv_settings_init-spotdetection.png)
+
+Initial spot detection consists of two main steps: 
+
+1. Detection of edges in the provided image using the canny method
+2. Detection of circles using the detected edges by hough transform
+
+The three following settings are used for edge-detection, while the rest is needed to consitently detect circles of the correct size:
+- Sigma-value for gaussian blur
+- Edge-detection low threshold
+- Edge-detection high threshold
+
+During canny edge detection the image is first smoothed using a gaussian blur. The degree of smoothing can be set by changing the sigma-value. A higher sigma-value leads to stronger smoothing. 
+
+Afterwards the actual edge detection is performed. The details of the algorithm will not be explained here however during detection initially all points with values higher than the high-threshold will be labeled as an edge. All points connected to these edges with values above the low threshold will then recursively also be labeled as an edge. Therefore the low threshold must always be lower than the high threshold. The standard values for edge detection are mistakenly shown as 0.00 in the WebApp, as numbers in inputs can only be shown with up to 2 decimal places. The actual value for both the high and low threshold is `0.001`.
+
+> Generally, a higher sigma-value will require lower thresholds in order to be able to detect edges.
+
+After edges have been detected, circular objects within the image will be detected using a hough transform. Again, the algorithm itself will not be discussed here in detail. The range of radii tested by the algorithm has to be specified. This is done through the two settings: ___"Smallest tested radius"___ and ___"Largest tested radius___. The radii are given in pixels. The algorithm will then look for circles with integer radii between the two specified values. 
+
+The search is further restricted by the minimum distances in x and y direction between two circles. As spots lie on a regular grid, the minimum distances should be kept as close to the actual distance of the spots as possible. Again, the distance is given in pixels. 
+
+Lastly, a threshold for detecting a circle is set. This value essentially represents how similar a given object has to be to the candidate closest to the shape of a circle. It is given as a fraction of the maximum signal and should therefore take values between 0 and 1. 
+
+> If the layout of the microPAD or the resolution of the image differs significantly from our set-up. We recommend to change the radii and distance thresholds first.
+
+#### Detection of Grid-Lines
 
 ## Data Merging and Manipulation
 
