@@ -163,6 +163,18 @@ Lastly, a threshold for detecting a circle is set. This value essentially repres
 
 #### Detection of Grid-Lines
 
+![Advanced Settings: Grid-Detection](assets/userguide/adv_settings_grid-detection.png)
+
+In this step, the coordinates of all initally detected spots are used in a hough-transform to find the parameters of horizontal and vertical lines intersecting the spots. Because lines can also intersect with spots diagonally, possible angles the lines can have need to be restricted to values close to 0° and 90°. The allowed angle-window is specified through the maximum allowed tilt of the grid. Lower values will lead to faster processing as well as less artefacts. Restricting the angle too much will however lead to desired lines not being detected. 
+
+Similarly to the initial detection of spots, detected lines should have a regular distance from each other. Therefore correctly specifying the minimum distance between lines will also lead to less artefacts. The distance between lines should not be vastly different from the inter-spot distance. Again, a threshold for the hough transform is used to filter out noise. The threshold is analogous to the hough-transform for initial spot detection.
+
+#### Spot Correction and Intensity evaluation
+
+![Advanced Settings: Miscellaneous](assets/userguide/adv_settings_misc.png)
+
+
+
 ## Data Merging and Manipulation
 
 ## Annotation of .mzML-Files
