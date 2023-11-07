@@ -119,7 +119,19 @@ Currently the data table contains 13 rows:
 
 #### The Heatmap
 
-The third tab of the _Results-View_ shows a heatmap of spot-intensities. 
+The third tab of the _Results-View_ shows a heatmap of spot-intensities. If normalization was possible, the heatmap will show the normalized values. In case halos were detected, spots with a surrounding halo are marked with red:
+
+![Example of a Heatmap](assets/userguide/example_heatmap.png)
+
+#### The Grid
+
+The fourth tab of the _Results-View_ shows the image overlayed with the detected grid that the spots are arranged in. This tab is meant to help with troubleshooting, in case spots are missing in the analyzed image. If the grid-lines do not match the spots, most likely the image is too noisy or the radii of the spots in the image do not match the radii tested for during initial spot-detection. This can be changed in the advanced settings. More on that later.
+
+![Example of a Grid-Overlay](assets/userguide/example_grid.png)
+
+A faulty grid leads to mistakes during spot-correction. Spot-correction relies on the grid to remove spots that lie too far from intersecting grid-lines. Additionally, intersections that do not yet have a detected spot in close proximity, will be used to backfill missing spots. Therefore if the grid is either missing, or contains too many lines, either too many or too few spots will be left after spot-correction.
+
+### Advanced Settings
 
 ## Data Merging and Manipulation
 
