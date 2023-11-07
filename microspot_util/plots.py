@@ -36,8 +36,8 @@ def plot_result(figure,axs,img,df,g_prop):
     patch=mpl.patches.Patch(facecolor="white",edgecolor="k",linewidth=0.4,label="Halo Radii")
     handles.append(patch)
     box = axs.get_position()
-    axs.set_position([box.x0, box.y0 + box.height * 0.1,
-                    box.width, box.height * 0.9])
+    # axs.set_position([box.x0, box.y0 + box.height * 0.1,
+    #                 box.width, box.height * 0.9])
     axs.legend(handles=handles,loc='upper center', bbox_to_anchor=(0.5, -0.1),
             fancybox=True,ncol=5)
 
@@ -69,9 +69,9 @@ def plot_heatmap(figure,axs,df,g_prop,norm_data:bool=False):
     axs.tick_params(axis=u'both', which=u'both',length=0)
     axs.scatter(df.loc[df["halo"]>0,"column"]-(math.floor((g_prop["columns"]["bounds"][0])/10)*10)-0.5,g_prop["rows"]["bounds"][-1]+0.5-df.loc[df["halo"]>0,"row"],marker="s", c="red",label="Detected Halos")
     box = axs.get_position()
-    axs.set_position([box.x0, box.y0 + box.height * 0.1,
-                    box.width, box.height * 0.9])
-    axs.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1),
+    # axs.set_position([box.x0, box.y0 + box.height * 0.1,
+    #                 box.width, box.height * 0.9])
+    axs.legend(loc='upper left', bbox_to_anchor=(1, 0),
             fancybox=True,ncol=5)
     figure.colorbar(htmp,ax=axs,label="Spot-Intensity",shrink=0.5)
 
