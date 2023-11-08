@@ -175,7 +175,7 @@ Similarly to the initial detection of spots, detected lines should have a regula
 
 This section currently contains only two settings:
 
-- Maximum distance from grid-line intersections for acceptance of a spot
+- Maximum distance from gridline intersections for acceptance of a spot
 - Disk-Radius for spot-intensity calculations
 
 The maximum distance for spot acceptance is relevant for spot correction, as any spots further away than the given value will be considered artifacts and therefore removed. For intersections with no spots closer than the acceptance criterium a spot will be defined at the point of intersection. Spots defined in this manner are considered "Backfilled".
@@ -183,6 +183,18 @@ The maximum distance for spot acceptance is relevant for spot correction, as any
 Ideally all detected spots would have the same radius. Due to noise within the recorded image this is however not the case. To keep the area consistent for evaluation of the average spot-intensity a disk of defined radius, input by the user, is used.
 
 #### Halo-Detection
+
+![Advanced Settings: Halo-Detection](assets/userguide/adv_settings_halo-detection.png)
+
+Halo-detection is somewhat analogous to the initial detection of spots: A hough-transform is used to detect circles in a modified version of the image. This time however, not the edges of spots but rather the skeleton of halos is detected. The reason for this is, that a halo always has an inner and an outer edge which can lead to ambiguitiy in the determination of the radius. Therefore the skeleton of the halo is used. 
+
+In order to create a skeleton of the halos, first a mask of the image only containing the halos is created using otsu's method. The initial mask contains alot of noise that needs to be removed to yield a good skeletonized image. Part of the denoising process involves removing objects smaller than a specified size. This size can be set with the ___Minimum Object Size___ Setting. The mask is then skeletonized and dilated to prepare for circle detection.
+
+As the circle detection step is analogous to initial spot detection, the settings for the tested radii, distance between halos and the threshold are also similar.
+
+The presence of an antimicrobial halo around a spot implies enough activity of the fraction eluted to the spot to kill off the reporter strain in a specific radius around the spot. Therefore lower or no signal is observed at the center of the spot. This is why evaluating the spot-intensity is not advisable in these cases. Instead the size (here, the radius) of the halo may be used as a measure of activity of the compound. Since the radius of a halo and the intensity of the spot are two incompatible measurements both correlating with activity of the eluted fraction, they need to be scaled to each other to achieve a larger dynamic range of the performed assay. Currently this is done through a ___Scaling Factor___ to yield qualitative/semi-quantitative results. 
+
+The values that the halo-radii should be scaled to can be selected. It is recommended to scale to the normalized data. If however scaling to the raw spot-intensities or no scaling at all is desired, it can be selected accordingly.
 
 ## Data Merging and Manipulation
 
