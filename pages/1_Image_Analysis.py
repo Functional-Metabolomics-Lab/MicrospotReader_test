@@ -139,7 +139,7 @@ if st.session_state["analyze"]==False:
 
             c1,c2=st.columns(2)
             with c1:
-                st.session_state["adv_settings"]["spot_misc"]["acceptance"]=st.number_input("Distance from grid-point for acceptance of spot:",value=10,min_value=1,step=1)
+                st.session_state["adv_settings"]["spot_misc"]["acceptance"]=st.number_input("Max. distance from grid-line intersection for spot acceptance:",value=10,min_value=1,step=1)
             with c2:
                 st.session_state["adv_settings"]["spot_misc"]["int_rad"]=st.number_input("Disk-Radius for spot-intensity calculation:",value=25,min_value=0,step=1)
             

@@ -173,7 +173,16 @@ Similarly to the initial detection of spots, detected lines should have a regula
 
 ![Advanced Settings: Miscellaneous](assets/userguide/adv_settings_misc.png)
 
+This section currently contains only two settings:
 
+- Maximum distance from grid-line intersections for acceptance of a spot
+- Disk-Radius for spot-intensity calculations
+
+The maximum distance for spot acceptance is relevant for spot correction, as any spots further away than the given value will be considered artifacts and therefore removed. For intersections with no spots closer than the acceptance criterium a spot will be defined at the point of intersection. Spots defined in this manner are considered "Backfilled".
+
+Ideally all detected spots would have the same radius. Due to noise within the recorded image this is however not the case. To keep the area consistent for evaluation of the average spot-intensity a disk of defined radius, input by the user, is used.
+
+#### Halo-Detection
 
 ## Data Merging and Manipulation
 
