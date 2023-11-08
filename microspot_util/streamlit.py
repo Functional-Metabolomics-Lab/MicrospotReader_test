@@ -27,6 +27,8 @@ states={"analyze":False,            # State of image analysis -> False = not pro
         "norm":False,               # Keeps track of wheter data has been normalized during image analysis.
         }       
 
+scale_list=["Scale to normalized Data", "Scale to raw Data","Do not scale to any Data"]
+
 def set_analyze_True():
     # Callback function to set analyze state to true
     st.session_state["analyze"]=True
