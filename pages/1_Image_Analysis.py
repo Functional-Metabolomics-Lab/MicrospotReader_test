@@ -139,15 +139,16 @@ if st.session_state["analyze"]==False:
 
             c1,c2=st.columns(2)
             with c1:
-                st.session_state["adv_settings"]["spot_misc"]["acceptance"]=st.number_input("Max. distance from grid-line intersection for spot acceptance:",value=10,min_value=1,step=1)
+                st.session_state["adv_settings"]["spot_misc"]["acceptance"]=st.number_input("Max. distance from grid for spot acceptance:",value=10,min_value=1,step=1)
             with c2:
                 st.session_state["adv_settings"]["spot_misc"]["int_rad"]=st.number_input("Disk-Radius for spot-intensity calculation:",value=25,min_value=0,step=1)
             
             st.divider()
 
+            st.markdown("__Halo-Detection__")
+
             c1,c2=st.columns(2)
             with c1:
-                st.markdown("__Halo-Detection__")
                 st.session_state["adv_settings"]["halo_det"]["low_rad"]=st.number_input("Smallest tested radius:",value=40,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
                 # st.session_state["adv_settings"]["halo_det"]["sigma"]=st.number_input("Sigma-value for gaussian blur:",min_value=1.0,max_value=20.0,value=3.52941866,disabled=not st.session_state["halo_toggle"])
                 # st.session_state["adv_settings"]["halo_det"]["low_edge"]=st.number_input("Edge-detection low threshold:",value=44.78445877,min_value=0.0,disabled=not st.session_state["halo_toggle"])
@@ -158,12 +159,12 @@ if st.session_state["analyze"]==False:
 
 
             with c2:
-                st.session_state["adv_settings"]["halo_det"]["tog_scale"]=st.toggle("Scale Halos to normalized Data",value=True)
                 # st.session_state["adv_settings"]["halo_det"]["high_rad"]=st.number_input("Largest tested radius:",value=70,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["high_rad"]=st.number_input("Largest tested radius:",value=100,step=1,min_value=1,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["x_dist"]=st.number_input("Minimum x-distance between halos:",value=70,step=1,min_value=0,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["y_dist"]=st.number_input("Minimum y-distance between halos:",value=70,step=1,min_value=0,disabled=not st.session_state["halo_toggle"])
                 # st.session_state["adv_settings"]["halo_det"]["thresh"]=st.number_input("Spot-detection threshold:",value=0.38546213,min_value=0.0,disabled=not st.session_state["halo_toggle"])
+                st.session_state["adv_settings"]["halo_det"]["tog_scale"]=st.selectbox("Select Method for Scaling Halos to data:",mst.scale_list)
 
         with col1:
             # Start the image processing algorithm. Only activated if all settings have been set
@@ -276,10 +277,10 @@ if st.session_state["analyze"]==True:
                 s.halo=np.nan
 
             # Scale Intensity of spots with halos:
-            if s.halo>0 and st.session_state["adv_settings"]["halo_det"]["tog_scale"]==False:
+            if s.halo>0 and st.session_state["adv_settings"]["halo_det"]["tog_scale"]==mst.scale_list[1]:
                 s.int=s.halo/st.session_state["adv_settings"]["halo_det"]["scaling"]
 
-            elif s.halo>0 and st.session_state["adv_settings"]["halo_det"]["tog_scale"]==True:
+            elif s.halo>0 and st.session_state["adv_settings"]["halo_det"]["tog_scale"]==mst.scale_list[0]:
                 s.norm_int=s.halo/st.session_state["adv_settings"]["halo_det"]["scaling"]
 
     # Tabs for all Results that are displayed
