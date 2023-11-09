@@ -218,6 +218,22 @@ The dimensions of a microPAD are 210 x 297 mm. Since no set-up sufficiently larg
 
 ### Layout and Workflow
 
+#### Settings
+
+Before starting the merging process, a set of datatables (atleast one) has to be selected. This can either be done by selecting datasets saved in the current session or by uploading `.csv` files using the drag and drop functionality.
+
+![Data Merging: Setup](assets/userguide/merge_setup.png)
+
+After selecting the data to be merged, you can directly merge the tables by clicking the ___Merge Data___ button. In this case the tables will simply be concatenated and sorted by row and column index of the spots. 
+
+In case you also want to add information on the retention time of each spot, the ___Add Retention-Time___ setting has to be enabled. Doing this activates the ability to input the retention times at which fractionation onto a microPAD was started and stoppend. Please note that the times should be input in seconds. 
+
+Currently our set-up elutes to the microPAD using a serpentine path. The retention time is therefore also added in a serpentine manner. Disabling the ___Serpentine Path___ setting will lead to the retention time always being added from left to right.
+
+If the ___Ignore controls when adding RT___ setting is enabled, spots of type "Control" will not be considered during addition of the retention time. This is sensible, if the rows and/or columns selected as control were not part of the region of the microPAD that was eluted to. Control-type spots will also be assigned a retention time if this setting is disabled.
+
+#### Results
+
 
 
 ## Annotation of .mzML-Files
