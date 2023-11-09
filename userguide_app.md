@@ -4,6 +4,10 @@
 
 This document is directed at new users of the Web App implementation of the MicrospotReader Workflow. It will guide you through the individual steps required for annotation of LC-MS data with concomitantly determined bioactivity-values.
 
+## The microPAD
+
+WIP
+
 ## Purpose
 
 WIP
@@ -131,6 +135,16 @@ The fourth tab of the _Results-View_ shows the image overlayed with the detected
 
 A faulty grid leads to mistakes during spot-correction. Spot-correction relies on the grid to remove spots that lie too far from intersecting grid-lines. Additionally, intersections that do not yet have a detected spot in close proximity, will be used to backfill missing spots. Therefore if the grid is either missing or contains too many lines, either too many or too few spots will be left after spot-correction.
 
+#### Storing and managing Data in a Session
+
+After results of image analysis have been produced, the data table can be stored in the current session. This is done by naming the image data and then pressing the ___Add Image-Data to Session___ Button. The data will then show up in the ___Image-Data___ table just below.
+
+<img src="assets/userguide/sidebar.png" alt="drawing" width="200"/>
+
+Data stored in the session will be available until the web app is closed or until you decide to delete it yourself. This is done by selecting a dataset and pressing the ___Delete Selection___ button at the bottom of the sidebar. Once deleted data cannot be restored.
+
+For steps following image analysis, stored data can be used. To do this check the checkbock under "Select" in the respective table and click the ___Apply Changes___ button at the bottom of the sidebar. Additionally, datasets can be renamed by double-clicking on the current name of the dataset, giving it a new name and then pressing the ___Apply Changes___ button. In case you forget to press the button whenever a change has been made but not yet applied, a warning message will be displayed.
+
 ### Advanced Settings
 
 #### Initial spot detection
@@ -197,5 +211,13 @@ The presence of an antimicrobial halo around a spot implies enough activity of t
 The values that the halo-radii should be scaled to can be selected. It is recommended to scale to the normalized data. If however scaling to the raw spot-intensities or no scaling at all is desired, it can be selected accordingly.
 
 ## Data Merging and Manipulation
+
+### Rationale
+
+The dimensions of a microPAD are 210 x 297 mm. Since no set-up sufficiently large for capturing images of these dimensions was available, the microPAD was split into multiple smaller pieces. This results in multiple images being taken for a single experiment. Therefore, after performing image analysis, the obtained data-tables have to be merged to be able to construct a chromatogram based on the signal obtained during the assay. Merging the data as well as constructing a chromatogramm from the data is done in this step. 
+
+### Layout and Workflow
+
+
 
 ## Annotation of .mzML-Files

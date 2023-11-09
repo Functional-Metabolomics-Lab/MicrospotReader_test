@@ -164,7 +164,7 @@ if st.session_state["analyze"]==False:
                 st.session_state["adv_settings"]["halo_det"]["x_dist"]=st.number_input("Minimum x-distance between halos:",value=70,step=1,min_value=0,disabled=not st.session_state["halo_toggle"])
                 st.session_state["adv_settings"]["halo_det"]["y_dist"]=st.number_input("Minimum y-distance between halos:",value=70,step=1,min_value=0,disabled=not st.session_state["halo_toggle"])
                 # st.session_state["adv_settings"]["halo_det"]["thresh"]=st.number_input("Spot-detection threshold:",value=0.38546213,min_value=0.0,disabled=not st.session_state["halo_toggle"])
-                st.session_state["adv_settings"]["halo_det"]["tog_scale"]=st.selectbox("Select Method for Scaling Halos to data:",mst.scale_list)
+                st.session_state["adv_settings"]["halo_det"]["tog_scale"]=st.selectbox("Select method for scaling halos to data:",mst.scale_list)
 
         with col1:
             # Start the image processing algorithm. Only activated if all settings have been set
