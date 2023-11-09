@@ -69,28 +69,25 @@ elif choose_input=="Upload Data":
     else:
         st.session_state["mergedata_loaded"]=True
 
-col1,col2,col3=st.columns(3)
 c1,c2=st.columns(2)
 
 # Settings for Data Merging
-with col1:
-    # Toggle the use of normalized data
-    st.toggle("Use normalized Data",key="toggleNorm",on_change=mst.reset_merge)
-
-with col2:
-    # Toggle the annotation of all spots with a retention time
-    st.toggle("Add Retention-Time",key="addRT",on_change=mst.reset_merge)
 
 with c1:
+    # Toggle the annotation of all spots with a retention time
+    st.toggle("Add Retention-Time",key="addRT",on_change=mst.reset_merge)
+    # Toggle serpentine sorting, if enabled spots are sorted in a serpentine pattern
+    st.toggle("Serpentine Path",key="serpentine",on_change=mst.reset_merge,disabled=not st.session_state["addRT"])
     # Input for the retention time at which spotting was started
     t_0=st.number_input("Start Time [s]",value=0,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
     # Button starting the data merging process.
     st.button("Merge Data",disabled=st.session_state["mergedata_loaded"],type="primary",on_click=mst.merge_settings)
 
-with col3:
-    # Toggle serpentine sorting, if enabled spots are sorted in a serpentine pattern
-    st.toggle("Serpentine Path",key="serpentine",on_change=mst.reset_merge)
 with c2:
+    # Toggle the use of normalized data
+    st.toggle("Use normalized Data for Visualization",key="toggleNorm",on_change=mst.reset_merge)
+    # Toggle to ignore spots of type "control" when adding the retention time. Set this to true if a row or column is used as control that was not spotted using the microspotter set-up.
+    st.toggle("Ignore controls when adding RT",value=True, on_change=mst.reset_merge, key="ignoreCtrl",disabled=not st.session_state["addRT"])
     # Time each spot was eluted to.
     t_end=st.number_input("End Time [s]",value=520,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
 
@@ -108,14 +105,18 @@ if st.session_state["merge_state"]==True:
     # Sorts the spots according to the settings
     msu.spot.sort_list(merged_spots,serpentine=st.session_state["serpentine"],inplace=True)
 
-    # Annotation of all spots with a retention time if enabled
-    if st.session_state["addRT"]==True:
-        msu.spot.annotate_RT(merged_spots,t_0,t_end)
-
-    # creates a dataframe for download and visualization
+    # Create a dataframe from the spot-data
     df=msu.spot.create_df(merged_spots)
     
-    test,df.norm_intensity=msu.baseline_correction(df["norm_intensity"])
+    # Annotation of all spots with a retention time if enabled
+    if st.session_state["addRT"]==True and st.session_state["ignoreCtrl"]==True:
+        df.loc[df["type"]=="Sample","RT"]=np.linspace(t_0,t_end,num=len(df.loc[df["type"]=="Sample"]))
+    
+    elif st.session_state["addRT"]==True and st.session_state["ignoreCtrl"]==False:
+        df["RT"]=np.linspace(t_0,t_end,num=len(df))
+
+    
+    baseline,df.norm_intensity=msu.baseline_correction(df["norm_intensity"])
     # stores current data in a session state
     st.session_state["current_merge"]=df
 
@@ -136,6 +137,7 @@ if st.session_state["merge_state"]==True:
             fig,ax=plt.subplots()
             plots.plot_chromatogram(fig,ax,df,norm_data=st.session_state["toggleNorm"])
             st.pyplot(fig)
+            
 
     else:
         # 2 tabs if retention time is disabled
