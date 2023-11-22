@@ -58,7 +58,7 @@ In order to start the Analysis only three inputs are actually required: The imag
 1. If multiple images contain information on the same assay, the correct indices are required for merging of the data tables.
 2. The number of spots in the image is calculated based on the indices. This is relevant for the initial detection of spots in the image.
 
-If atleast one row or column is selected as a control (7 and 7), all spots will be normalized based on the values of the selected spots. This is done to ensure consistent results between different images. The resulting heatmap will then display the normalized values instead the values are then also shown in the column ___"norm_intensity"___ in the data table. More on that later.
+If atleast one row or column is selected as a control (6 and 7), all spots will be normalized based on the values of the selected spots. This is done to ensure consistent results between different images. The resulting heatmap will then display the normalized values instead the values are then also shown in the column ___"norm_intensity"___ in the data table. More on that later.
 
 #### Anti-microbial Halos
 
@@ -66,7 +66,7 @@ The halo detection setting is only relevant for assays in which anti-microbial h
 
 ![Example of an antimicrobial Halo](assets/userguide/example_halo.png) _Close-up of an anti-microbial Halo_
 
-Since the radius of halos and spot-intensity are non compatible values that both correlate to the activity of the eluted fraction, they have to be scaled to each other. For now the scaling factor can be chosen arbitrarily to allow for qualitate scaling. In the future however we will implement a system for scaling based on measured data, hoping that this will lead to more quantitative results.
+Since the radius of halos and the intensity of spots are non compatible values that both correlate to the activity of the eluted fraction, they have to be scaled to each other. For now the scaling factor can be chosen arbitrarily to allow for qualitative scaling. In the future however we will implement a system for scaling based on measured data, hoping that this will lead to more quantitative results.
 
 In reporter strain assays the intensity of signals might vary alot depending on how well the bacterial culture grew. This is not true for the size of a halo. The radius within which an antimicrobial substance is lethal to the reporter strain does not change significantly with the concentration of cells in the agar. Therefore the scaling of halos to spot intensities is done only for normalized data by default(this can be changed in the advanced settings however). For spots surrounded by a halo, the results will then show the scaled version of the halo radius instead of the normalized intensity in the column ___"norm_intensity"___ in the data table (as well as the heatmap).
 
@@ -234,6 +234,6 @@ If the ___Ignore controls when adding RT___ setting is enabled, spots of type "C
 
 #### Results
 
-
+![Data Merging: Results](assets/userguide/merge_results.png)
 
 ## Annotation of .mzML-Files
