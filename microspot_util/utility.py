@@ -84,16 +84,20 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
     # Read image file.
     load=iio.imread(filename)
 
-    # Check if image is RGBA and convert image to grayscale.
-    if load.shape[2]==4:
-        gray_img=skimage.color.rgb2gray(load[:,:,0:3])
-
-    # Convert RGB images to grayscale.
-    elif load.shape[2]==3:
-        gray_img=skimage.color.rgb2gray(load)
+    if len(load.shape)<3:
+        gray_img=load
     
     else:
-        gray_img=load
+        # Check if image is RGBA and convert image to grayscale.
+        if load.shape[2]==4:
+            gray_img=skimage.color.rgb2gray(load[:,:,0:3])
+
+        # Convert RGB images to grayscale.
+        elif load.shape[2]==3:
+            gray_img=skimage.color.rgb2gray(load)
+        
+        else:
+            gray_img=load
 
     # Invert the intensity values. Comment out if you do not wish to invert the image.
     if invert:
