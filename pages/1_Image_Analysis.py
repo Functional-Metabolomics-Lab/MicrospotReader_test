@@ -306,12 +306,10 @@ if st.session_state["analyze"]==True:
 
     # Displays a heatmap of spot-intensities
     with tab3:
-        col1,col2=st.columns([0.6,0.4])
-        with col1:
-            # Display Image and corresponding Heatmap
-            fig,ax=plt.subplots()
-            plots.plot_heatmap(fig,ax,df,st.session_state["grid"],st.session_state["norm"])
-            st.pyplot(fig)
+        # Display Image and corresponding Heatmap
+        fig,ax=plt.subplots()
+        plots.plot_heatmapv2(fig,ax,df,row_conv_inv,st.session_state["norm"])
+        st.pyplot(fig)
     
     # Displays the detected grid.
     with tab4:

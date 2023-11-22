@@ -2,11 +2,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
+from matplotlib.lines import Line2D
 import matplotlib as mpl
 from .utility import *
 import math
 import pyopenms as oms
-from pyopenms.plotting import plot_chromatogram,plot_spectrum
 
 def plot_grid(figure,axs,img,lines):
     axs.imshow(img)
@@ -45,6 +45,47 @@ def plot_result(figure,axs,img,df,g_prop):
     halo_df=df[df["halo"]>0]
     for idx in halo_df.index:
         axs.text(halo_df.loc[idx,"x_coord"]+12, halo_df.loc[idx,"y_coord"]-9, f'{halo_df.loc[idx,"halo"]:.0f}',c="white",size=7,path_effects=[pe.withStroke(linewidth=1, foreground="k")])
+
+def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False):
+
+    if norm_data:
+        intensity="norm_intensity"
+        colorbar_name="Normalized Spot Intensity [a.u.]"
+    else:
+        intensity="spot_intensity"
+        colorbar_name="Spot Intensity [a.u.]"
+
+    data=df.copy()
+    data.loc[data["halo"]>0,"radius"]=data.loc[data["halo"]>0,"halo"]
+    data["color"]="dimgray"
+    data.loc[data.halo>0,"color"]="red"
+
+    sc=axs.scatter(data.column, -data.row, s=data.radius*4, c=data[intensity], cmap="viridis",edgecolors=data.color);
+    axs.set(     
+        aspect="equal",
+        ylabel="Row",
+        xlabel="Column",
+        xticks=np.arange(data.column.min(),data.column.max()+1),
+        yticks=-np.arange(data.row.min(),data.row.max()+1),
+        yticklabels=[conv_dict[i] for i in range(data.row.min(),data.row.max()+1)],
+        xticklabels=np.arange(data.column.min(),data.column.max()+1)
+        );
+
+    axs.spines[["right","left","top","bottom"]].set_visible(False)
+    axs.tick_params(axis=u'both', which=u'both',length=0)
+
+    figure.colorbar(sc,shrink=0.7,label=colorbar_name,orientation="horizontal",location="top")
+
+    marker_nohalo=Line2D([],[],color="white",markeredgecolor="dimgray",markerfacecolor="gray",marker="o")
+    marker_halo=Line2D([],[],color="white",markeredgecolor="red",markerfacecolor="gray",marker="o")
+    legend1 = axs.legend((marker_nohalo,marker_halo),("-","+"),title="Halo\nDetected",loc="upper left",bbox_to_anchor=(1,1),frameon=False)
+    axs.add_artist(legend1)
+
+    handles, labels = sc.legend_elements(prop="sizes", alpha=1,num=4,func=lambda x: x/4,color="dimgray",markeredgecolor="k")
+    legend2 = axs.legend(handles, labels, loc="lower left", title="Radius of\nSpot or Halo",bbox_to_anchor=(1, 0),
+                frameon=False)
+
+    figure.tight_layout()
 
 def plot_heatmap(figure,axs,df,g_prop,norm_data:bool=False):
     if norm_data==False:
