@@ -390,7 +390,7 @@ class spot:
 
     @staticmethod
     @st.cache_data
-    def detect(gray_img:np.array,spot_nr:int,canny_sig:int=10,canny_lowthresh:float=0.001,canny_highthresh:float=0.001,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.3,small_rad:int=20,large_rad:int=30) -> list:
+    def detect(gray_img:np.array,spot_nr:int,canny_sig:int=10,canny_lowthresh:float=0.001,canny_highthresh:float=0.001,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.3,small_rad:int=20,large_rad:int=30,troubleshoot:bool=False) -> list:
         """
         ## Description
 
@@ -440,7 +440,10 @@ class spot:
         
         spotlist=[spot(x,y,rad) for x,y,rad in zip(spot_x,spot_y,spot_rad)]
         
-        return spotlist
+        if troubleshoot is False:
+            return spotlist
+        else:
+            return spotlist, {"edge":edges,"hough":spot_hough}
     
     @staticmethod
     def annotate_RT(spot_list:list,start:float,end:float)->list:
