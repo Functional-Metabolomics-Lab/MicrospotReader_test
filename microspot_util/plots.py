@@ -16,10 +16,25 @@ def plot_grid(figure,axs,img,lines):
     axs.axis("off")
     figure.tight_layout()
 
-def plot_result(figure,axs,img,df,g_prop):
+def plot_result(figure,axs,img,df,g_prop,halo:bool=True):
     axs.imshow(img)
-    axs.scatter(df.loc[df["note"]=="Initial Detection","x_coord"],df.loc[df["note"]=="Initial Detection","y_coord"],marker="2",c="k",label="Kept Spots")
-    axs.scatter(df.loc[df["note"]=="Backfilled","x_coord"],df.loc[df["note"]=="Backfilled","y_coord"],marker="2",c="r",label="Backfilled Spots")
+
+    axs.scatter(
+        df.loc[df["note"]=="Initial Detection","x_coord"],
+        df.loc[df["note"]=="Initial Detection","y_coord"],
+        marker="2",
+        c="k",
+        label="Kept Spots"
+        )
+
+    axs.scatter(
+        df.loc[df["note"]=="Backfilled","x_coord"],
+        df.loc[df["note"]=="Backfilled","y_coord"],
+        marker="2",
+        c="r",
+        label="Backfilled Spots"
+        )
+
     axs.set(
         ylabel="Row",
         xlabel="Column",
@@ -28,27 +43,30 @@ def plot_result(figure,axs,img,df,g_prop):
         xticks=df[df["row"]==g_prop["rows"]["bounds"][0]]["x_coord"],
         xticklabels=df[df["row"]==g_prop["rows"]["bounds"][0]]["column"],
         )
+    
     axs.spines[["right","left","top","bottom"]].set_visible(False)
     axs.tick_params(axis=u'both', which=u'both',length=0,labelsize=7)
 
     # Adding legend handles for Text
     handles,labels=axs.get_legend_handles_labels()
-    patch=mpl.patches.Patch(facecolor="white",edgecolor="k",linewidth=0.4,label="Halo Radii")
-    handles.append(patch)
-    box = axs.get_position()
-    # axs.set_position([box.x0, box.y0 + box.height * 0.1,
-    #                 box.width, box.height * 0.9])
+
+    # Adding halo specific items
+    if halo is True:
+        # Adding legend item for detected halos
+        patch=mpl.patches.Patch(facecolor="white",edgecolor="k",linewidth=0.4,label="Halo Radii")
+        handles.append(patch)
+
+         # Displaying all detected Halos with their respective radii.
+        halo_df=df[df["halo"]>0]
+        for idx in halo_df.index:
+            axs.text(halo_df.loc[idx,"x_coord"]+12, halo_df.loc[idx,"y_coord"]-9, f'{halo_df.loc[idx,"halo"]:.0f}',c="white",size=7,path_effects=[pe.withStroke(linewidth=1, foreground="k")])
+
     axs.legend(handles=handles,loc='upper center', bbox_to_anchor=(0.5, -0.1),
             fancybox=True,ncol=5)
 
-    # Displaying all detected Halos with their respective radii.
-    halo_df=df[df["halo"]>0]
-    for idx in halo_df.index:
-        axs.text(halo_df.loc[idx,"x_coord"]+12, halo_df.loc[idx,"y_coord"]-9, f'{halo_df.loc[idx,"halo"]:.0f}',c="white",size=7,path_effects=[pe.withStroke(linewidth=1, foreground="k")])
-
     figure.tight_layout()
 
-def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False):
+def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False,halo:bool=True):
 
     if norm_data:
         intensity="norm_intensity"

@@ -48,7 +48,7 @@ row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}
 row_conv_inv={v:k for k,v in row_conv.items()}
 
 # If anaylsis has not been initialized, shows image preparation steps.
-if st.session_state["analyze"]==False:
+if st.session_state["analyze"] is False:
     # Selection between custom image upload or an example.
     choose_input=st.selectbox("File upload:",["Upload Image","Example for Testing"])
 
@@ -249,7 +249,7 @@ if st.session_state["analyze"]==True:
     else:
         st.session_state["norm"]=False
 
-    if st.session_state["halo_toggle"]==True:
+    if st.session_state["halo_toggle"] is True:
         # Detect Halos using the halo.detect method.
         halos=msu.halo.detect(img=st.session_state["img"],
                               min_xdist=st.session_state["adv_settings"]["halo_det"]["x_dist"],
@@ -297,7 +297,7 @@ if st.session_state["analyze"]==True:
     with tab1:
         st.markdown("## Detected Spots")
         fig_img,ax=plt.subplots()
-        plots.plot_result(fig_img,ax,st.session_state["img"],df,st.session_state["grid"])        
+        plots.plot_result(fig_img,ax,st.session_state["img"],df,st.session_state["grid"],halo=st.session_state["halo_toggle"])        
         st.pyplot(fig_img)
         figuredict["img_results"]=fig_img
 
