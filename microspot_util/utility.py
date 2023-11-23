@@ -3,8 +3,6 @@
  Purpose:       Functions and Classes for detection of microspots.
 
  Author:        Simon Knoblauch
-
- Last modified: 2023-09-27
 -------------------------------------------------------------------------------
 '''
 
@@ -100,7 +98,7 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
             gray_img=load
 
     # Invert the intensity values. Comment out if you do not wish to invert the image.
-    if invert:
+    if invert is True:
         gray_img=skimage.util.invert(gray_img)
     
     return gray_img
