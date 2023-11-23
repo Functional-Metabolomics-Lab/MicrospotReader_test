@@ -292,13 +292,15 @@ if st.session_state["analyze"]==True:
     # Turns spotlist to df for visualization and download.
     df=msu.spot.create_df(sort_spots)
     
+    figuredict={}
     # Displays image with main results.
     with tab1:
         col1,col2=st.columns([0.6,0.4])
         with col1:
-            fig,ax=plt.subplots()
-            plots.plot_result(fig,ax,st.session_state["img"],df,st.session_state["grid"])        
-            st.pyplot(fig)
+            fig_img,ax=plt.subplots()
+            plots.plot_result(fig_img,ax,st.session_state["img"],df,st.session_state["grid"])        
+            st.pyplot(fig_img)
+            figuredict["img_results"]=fig_img
 
     # Displays the Table containing all information of the spots
     with tab2:
@@ -307,25 +309,43 @@ if st.session_state["analyze"]==True:
     # Displays a heatmap of spot-intensities
     with tab3:
         # Display Image and corresponding Heatmap
-        fig,ax=plt.subplots()
-        plots.plot_heatmapv2(fig,ax,df,row_conv_inv,st.session_state["norm"])
-        st.pyplot(fig)
+        fig_hm,ax=plt.subplots()
+        plots.plot_heatmapv2(fig_hm,ax,df,row_conv_inv,st.session_state["norm"])
+        st.pyplot(fig_hm)
+        figuredict["heatmap"]=fig_hm
     
     # Displays the detected grid.
     with tab4:
         col1,col2=st.columns(2)
         with col1:
             # Display the grid.
-            fig,ax=plt.subplots()
-            plots.plot_grid(fig,ax,st.session_state["img"],hor_line+vert_line)
-            st.pyplot(fig)
-            
+            fig_grid,ax=plt.subplots()
+            plots.plot_grid(fig_grid,ax,st.session_state["img"],hor_line+vert_line)
+            st.pyplot(fig_grid)
+            figuredict["detected_grid"]=fig_grid
+
         with col2: 
             st.markdown("## Detected Grid")
             mst.v_space(1)
             st.markdown("Please check whether the gridlines match the Spots!")
             st.markdown("A faulty grid leads to errors during spot detection and can influence the results negatively. The most frequent reason for faulty grids is a noisy background in the submitted image.")
 
-    # Converts the dataframe to a .csv and adds a download button.
-    table=mst.convert_df(df)
-    st.download_button(label="Download Spot-Data as .csv",data=table,mime="text/csv")
+    mst.v_space(1)
+
+    c1,c2,c3=st.columns(3)
+    with c3:
+        # Converts the dataframe to a .csv and adds a download button.
+        table=mst.convert_df(df)
+        st.download_button(
+            label="Download Spot-Data as .csv",
+            data=table,
+            mime="text/csv"
+            )
+
+    with c2:
+        # Creates a Zipfile containing all plots as .svg files on this page and makes it ready for download.
+        mst.download_figures(figuredict,"svg")
+    
+    with c1:
+        # Creates a Zipfile containing all plots as .png files on this page and makes it ready for download.
+        mst.download_figures(figuredict,"png")

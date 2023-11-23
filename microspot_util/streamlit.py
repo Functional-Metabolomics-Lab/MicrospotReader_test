@@ -1,5 +1,10 @@
 import streamlit as st
 import pandas as pd
+import tempfile
+import io
+import zipfile
+import pyopenms as oms
+import os
 
 # All session states that need to be initialized:
 states={"analyze":False,            # State of image analysis -> False = not processed, True = processed
@@ -29,10 +34,6 @@ states={"analyze":False,            # State of image analysis -> False = not pro
 
 scale_list=["Scale to normalized Data", "Scale to raw Data","Do not scale to any Data"]
 
-def set_analyze_True():
-    # Callback function to set analyze state to true
-    st.session_state["analyze"]=True
-
 def page_setup():
     # Sets title and site icon
     st.set_page_config(
@@ -45,6 +46,38 @@ def page_setup():
     for name,state in states.items():
         if name not in st.session_state:
             st.session_state[name]=state
+
+# Function to add vertical space between elements
+def v_space(n, col=None):
+    for _ in range(n):
+        if col:
+            col.write("")
+        else:
+            st.write("")
+
+# Displays data stored in the current session in the sidebar
+def datainfo():
+    with st.sidebar:
+        st.markdown("### Data in current Session")
+        
+        if st.session_state["change_warning"]==True:
+            # Warning if changes to stored data were not applied yet.
+            st.warning("Changes have not been applied yet!")
+        
+        # Displays an editable table for the stored image data
+        st.caption("Image-Data")
+        st.session_state["edit_img"]=st.data_editor(st.session_state["img_df"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"id":None},use_container_width=True,hide_index=True,on_change=datachange_warning,key="1")
+
+        # Displays an editable table for the stored merged data
+        st.caption("Merged Data")
+        st.session_state["edit_merge"]=st.data_editor(st.session_state["merge_df"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"id":None},use_container_width=True,hide_index=True,on_change=datachange_warning,key="2")
+
+        # Buttons for deleting data and applying changes to data.
+        col1,col2=st.columns(2)
+        with col2:
+            st.button("Delete Selection",on_click=del_sessiondata,use_container_width=True)
+        with col1:        
+            st.button("Apply Changes",on_click=apply_datachange,use_container_width=True,type="primary")
 
 def add_imgdata(data_name):
     # Stores spot-list of current image in img_data with a unique session ID
@@ -87,42 +120,6 @@ def del_sessiondata():
     st.session_state["merge_data"]={st.session_state["merge_df"].loc[idx,"id"]: st.session_state["merge_data"][st.session_state["merge_df"].loc[idx,"id"]] for idx in st.session_state["merge_df"].index}
     reset_merge()
 
-def datachange_warning():
-    # Callback function, activates the warning upon changes to the stored data.
-    st.session_state["change_warning"]=True
-
-# Displays data stored in the current session in the sidebar
-def datainfo():
-    with st.sidebar:
-        st.markdown("### Data in current Session")
-        
-        if st.session_state["change_warning"]==True:
-            # Warning if changes to stored data were not applied yet.
-            st.warning("Changes have not been applied yet!")
-        
-        # Displays an editable table for the stored image data
-        st.caption("Image-Data")
-        st.session_state["edit_img"]=st.data_editor(st.session_state["img_df"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"id":None},use_container_width=True,hide_index=True,on_change=datachange_warning,key="1")
-
-        # Displays an editable table for the stored merged data
-        st.caption("Merged Data")
-        st.session_state["edit_merge"]=st.data_editor(st.session_state["merge_df"],column_config={"Select":st.column_config.CheckboxColumn("Select",default=False),"id":None},use_container_width=True,hide_index=True,on_change=datachange_warning,key="2")
-
-        # Buttons for deleting data and applying changes to data.
-        col1,col2=st.columns(2)
-        with col2:
-            st.button("Delete Selection",on_click=del_sessiondata,use_container_width=True)
-        with col1:        
-            st.button("Apply Changes",on_click=apply_datachange,use_container_width=True,type="primary")
-
-# Function to add vertical space between elements
-def v_space(n, col=None):
-    for _ in range(n):
-        if col:
-            col.write("")
-        else:
-            st.write("")
-
 @st.cache_resource
 def convert_df(df):
     # function to turn df to a .csv, prepares table for download
@@ -139,3 +136,53 @@ def merge_settings():
 def reset_merge():
     # Callback function to reset the merge state
     st.session_state["merge_state"]=False
+
+def datachange_warning():
+    # Callback function, activates the warning upon changes to the stored data.
+    st.session_state["change_warning"]=True
+
+def set_analyze_True():
+    # Callback function to set analyze state to true
+    st.session_state["analyze"]=True
+
+def temp_figurefiles(figure_dict,suffix,directory):
+    pathlist=[]
+    for figname, figure in figure_dict.items():
+        figpath=os.path.join(directory,f"{figname}.{suffix}")
+        figure.savefig(figpath,format=suffix,dpi=300)
+        pathlist.append(figpath)
+    return pathlist
+
+@st.cache_resource
+def temp_zipfile(paths):
+    with tempfile.NamedTemporaryFile(delete=False) as tempzip:
+        with zipfile.ZipFile(tempzip.name,"w") as temp_zip:
+            for figurepath in paths:
+                temp_zip.write(figurepath,arcname=os.path.basename(figurepath))
+    return tempzip
+
+def download_figures(figure_dict:dict,suffix:str="svg") -> None:
+    with tempfile.TemporaryDirectory() as tempdir:
+        paths=temp_figurefiles(figure_dict,suffix,tempdir)
+
+        tempzip=temp_zipfile(paths)
+            
+        with open(tempzip.name,"rb") as zip_download:
+            st.download_button(
+                label=f"Download Plots as .{suffix}",
+                data=io.BytesIO(zip_download.read()),
+                mime=".zip",
+                file_name="plots_img-analysis.zip"
+                )
+
+def download_mzml(exp):
+    with tempfile.NamedTemporaryFile(suffix=".mzML", delete=False) as mzml_file:
+            oms.MzMLFile().store(mzml_file.name, exp)
+
+    with open(mzml_file.name,"rb") as mzml_file:
+        st.download_button(
+            label="Download .mzML File",
+            data=io.BytesIO(mzml_file.read()),
+            mime=".mzML",
+            file_name="annotated_file.mzML",
+            )

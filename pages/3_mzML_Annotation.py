@@ -98,17 +98,7 @@ with c2:
     # If Downloadbutton is enabled, show it and allow the download
     if st.session_state["mzml_download"]==False:
         # Store the mzml file on the server as an output, this is needed for the download button to work
-        with tempfile.NamedTemporaryFile(suffix=".mzML", delete=False) as mzml_file:
-            oms.MzMLFile().store(mzml_file.name, st.session_state["annot_mzml"])
-
-        with open(mzml_file.name, "rb") as mzml_file:
-            mzml_bytes = mzml_file.read()
-            st.download_button(
-                label="Download .mzML File",
-                data=io.BytesIO(mzml_bytes),
-                mime=".mzML",
-                file_name="annotated_file.mzML",
-            )
+        mst.download_mzml(st.session_state["annot_mzml"])
 
 # Display the TIC-Chromatogram aswell as the bioactivity chromatogram, derived from the mzml file.
 if st.session_state["annot_mzml"] is not None:
