@@ -75,7 +75,7 @@ if st.session_state["analyze"] is False:
             first_spot=st.text_input("Index of First Spot",placeholder="A1")
             last_spot=st.text_input("Index of Last Spot",placeholder="P20")
             # Enables or disables the detection of Halos
-            halo_toggle=st.toggle("Enable Halo detection",value=True,key="halo_toggle")
+            st.session_state["halo_toggle"]=st.toggle("Enable Halo detection",value=True)
             
             # Enables start analysis button if all required settings are set and calculates grid information.
             if first_spot and last_spot:
@@ -171,7 +171,7 @@ if st.session_state["analyze"] is False:
             st.button("Start Analysis!",type="primary",disabled=st.session_state["init_analysis"],on_click=mst.set_analyze_True, use_container_width=True)
 
 # Initiates Analysis and displays results if Starts Analysis button has been pressed.
-if st.session_state["analyze"]==True:
+if st.session_state["analyze"] is True:
     
     st.markdown("## Results")
 
