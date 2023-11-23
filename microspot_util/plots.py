@@ -14,14 +14,13 @@ def plot_grid(figure,axs,img,lines):
         axs.axline((0,item.y_int), slope=item.slope,c="r")
     axs.set(ylim=[img.shape[0],0],xlim=[0,img.shape[1]])
     axs.axis("off")
-    axs.set(title="Detected Spot-Grid")
     figure.tight_layout()
 
 def plot_result(figure,axs,img,df,g_prop):
     axs.imshow(img)
     axs.scatter(df.loc[df["note"]=="Initial Detection","x_coord"],df.loc[df["note"]=="Initial Detection","y_coord"],marker="2",c="k",label="Kept Spots")
     axs.scatter(df.loc[df["note"]=="Backfilled","x_coord"],df.loc[df["note"]=="Backfilled","y_coord"],marker="2",c="r",label="Backfilled Spots")
-    axs.set(title="Detected Spots and Halos",
+    axs.set(
         ylabel="Row",
         xlabel="Column",
         yticks=df[df["column"]==g_prop["columns"]["bounds"][0]]["y_coord"],
@@ -93,14 +92,12 @@ def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False):
 def plot_heatmap(figure,axs,df,g_prop,norm_data:bool=False):
     if norm_data==False:
         heatmap=df.pivot_table(index="row_name",columns="column",values="spot_intensity")
-        title="Heatmap of Spot-Intensities"
 
     elif norm_data==True: 
         heatmap=df.pivot_table(index="row_name",columns="column",values="norm_intensity")
-        title="Heatmap of normalized Spot-Intensities"
 
     htmp=axs.pcolormesh(heatmap.iloc[::-1],edgecolors="white",linewidth=4)
-    axs.set(title=title,
+    axs.set(
             aspect="equal",
             ylabel="Row",
             xlabel="Column",

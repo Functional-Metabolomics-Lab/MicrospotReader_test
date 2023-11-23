@@ -295,19 +295,20 @@ if st.session_state["analyze"]==True:
     figuredict={}
     # Displays image with main results.
     with tab1:
-        col1,col2=st.columns([0.6,0.4])
-        with col1:
-            fig_img,ax=plt.subplots()
-            plots.plot_result(fig_img,ax,st.session_state["img"],df,st.session_state["grid"])        
-            st.pyplot(fig_img)
-            figuredict["img_results"]=fig_img
+        st.markdown("## Detected Spots")
+        fig_img,ax=plt.subplots()
+        plots.plot_result(fig_img,ax,st.session_state["img"],df,st.session_state["grid"])        
+        st.pyplot(fig_img)
+        figuredict["img_results"]=fig_img
 
     # Displays the Table containing all information of the spots
     with tab2:
+        st.markdown("## Tabular Results")
         st.dataframe(df)
 
     # Displays a heatmap of spot-intensities
     with tab3:
+        st.markdown("## Heatmap of Results")
         # Display Image and corresponding Heatmap
         fig_hm,ax=plt.subplots()
         plots.plot_heatmapv2(fig_hm,ax,df,row_conv_inv,st.session_state["norm"])
