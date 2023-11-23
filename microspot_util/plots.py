@@ -15,6 +15,7 @@ def plot_grid(figure,axs,img,lines):
     axs.set(ylim=[img.shape[0],0],xlim=[0,img.shape[1]])
     axs.axis("off")
     axs.set(title="Detected Spot-Grid")
+    figure.tight_layout()
 
 def plot_result(figure,axs,img,df,g_prop):
     axs.imshow(img)
@@ -46,6 +47,8 @@ def plot_result(figure,axs,img,df,g_prop):
     for idx in halo_df.index:
         axs.text(halo_df.loc[idx,"x_coord"]+12, halo_df.loc[idx,"y_coord"]-9, f'{halo_df.loc[idx,"halo"]:.0f}',c="white",size=7,path_effects=[pe.withStroke(linewidth=1, foreground="k")])
 
+    figure.tight_layout()
+
 def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False):
 
     if norm_data:
@@ -67,7 +70,7 @@ def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False):
         xlabel="Column",
         xticks=np.arange(data.column.min(),data.column.max()+1),
         yticks=-np.arange(data.row.min(),data.row.max()+1),
-        yticklabels=[conv_dict[i] for i in range(data.row.min(),data.row.max()+1)],
+        yticklabels=[conv_dict[i].upper() for i in range(data.row.min(),data.row.max()+1)],
         xticklabels=np.arange(data.column.min(),data.column.max()+1)
         );
 
@@ -115,6 +118,8 @@ def plot_heatmap(figure,axs,df,g_prop,norm_data:bool=False):
     axs.legend(loc='upper left', bbox_to_anchor=(1, 0),
             fancybox=True,ncol=5)
     figure.colorbar(htmp,ax=axs,label="Spot-Intensity",shrink=0.5)
+    
+    figure.tight_layout()
 
 def plot_chromatogram(figure,axs,df,norm_data:bool=False):
     if norm_data==False:
@@ -131,6 +136,8 @@ def plot_chromatogram(figure,axs,df,norm_data:bool=False):
         xlabel="Time [s]",
         xlim=[df["RT"].min(),df["RT"].max()]
         )
+    
+    figure.tight_layout()
 
 def plot_mzml_chromatogram(figure,axs,exp,mz_val):
     rt_list=[]
@@ -150,3 +157,4 @@ def plot_mzml_chromatogram(figure,axs,exp,mz_val):
         xlabel="Retention Time [s]",
         xlim=[min(rt_list),max(rt_list)],
         )
+    figure.tight_layout()
