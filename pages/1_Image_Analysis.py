@@ -335,17 +335,18 @@ elif st.session_state["analyze"] is True:
     st.markdown("## Results")
 
     # Inital spot-detection.
-    init_spots=msu.spot.detect(gray_img=st.session_state["img"],
-                               spot_nr=st.session_state["grid"]["spot_nr"],
-                               canny_sig=st.session_state["adv_settings"]["init_det"]["sigma"],
-                               canny_lowthresh=st.session_state["adv_settings"]["init_det"]["low_edge"],
-                               canny_highthresh=st.session_state["adv_settings"]["init_det"]["high_edge"],
-                               hough_minx=st.session_state["adv_settings"]["init_det"]["x_dist"],
-                               hough_miny=st.session_state["adv_settings"]["init_det"]["y_dist"],
-                               hough_thresh=st.session_state["adv_settings"]["init_det"]["thresh"],
-                               small_rad=st.session_state["adv_settings"]["init_det"]["low_rad"],
-                               large_rad=st.session_state["adv_settings"]["init_det"]["high_rad"],
-                               )
+    init_spots=msu.spot.detect(
+        gray_img=st.session_state["img"],
+        spot_nr=st.session_state["grid"]["spot_nr"],
+        canny_sig=st.session_state["adv_settings"]["init_det"]["sigma"],
+        canny_lowthresh=st.session_state["adv_settings"]["init_det"]["low_edge"],
+        canny_highthresh=st.session_state["adv_settings"]["init_det"]["high_edge"],
+        hough_minx=st.session_state["adv_settings"]["init_det"]["x_dist"],
+        hough_miny=st.session_state["adv_settings"]["init_det"]["y_dist"],
+        hough_thresh=st.session_state["adv_settings"]["init_det"]["thresh"],
+        small_rad=st.session_state["adv_settings"]["init_det"]["low_rad"],
+        large_rad=st.session_state["adv_settings"]["init_det"]["high_rad"],
+        )
         
     # Create an empty image and draw a dot for each detected spot.
     dot_img=np.zeros(st.session_state["img"].shape)
@@ -353,11 +354,13 @@ elif st.session_state["analyze"] is True:
         i_spot.draw_spot(dot_img,255,5)
 
     # Detection of gridlines.
-    gridlines=msu.gridline.detect(img=dot_img, 
-                                  max_tilt=st.session_state["adv_settings"]["grid_det"]["tilt"],
-                                  min_dist=st.session_state["adv_settings"]["grid_det"]["min_dist"],
-                                  threshold=st.session_state["adv_settings"]["grid_det"]["thresh"]
-                                  )
+    gridlines=msu.gridline.detect(
+        img=dot_img, 
+        max_tilt=st.session_state["adv_settings"]["grid_det"]["tilt"],
+        min_dist=st.session_state["adv_settings"]["grid_det"]["min_dist"],
+        threshold=st.session_state["adv_settings"]["grid_det"]["thresh"]
+        )
+    # Assigning each line to horizontal or vertical.
     hor_line=[line for line in gridlines if line.alignment=="hor"]
     vert_line=[line for line in gridlines if line.alignment=="vert"]
 
@@ -389,14 +392,19 @@ elif st.session_state["analyze"] is True:
             msu.spot.backfill(corr_spots,g_point.x,g_point.y)
 
     # Assigns each spot a place on the grid.
-    sort_spots=msu.spot.sort_grid(corr_spots,
-                                row_conv=row_conv_inv,
-                                row_start=st.session_state["grid"]["rows"]["bounds"][0],
-                                col_start=st.session_state["grid"]["columns"]["bounds"][0])
+    sort_spots=msu.spot.sort_grid(
+        corr_spots,
+        row_conv=row_conv_inv,
+        row_start=st.session_state["grid"]["rows"]["bounds"][0],
+        col_start=st.session_state["grid"]["columns"]["bounds"][0]
+        )
 
     # Calculate the spot intensity and label controls
     for s in sort_spots:
-        s.get_intensity(st.session_state["img"],st.session_state["adv_settings"]["spot_misc"]["int_rad"])
+        s.get_intensity(
+            st.session_state["img"],
+            st.session_state["adv_settings"]["spot_misc"]["int_rad"]
+            )
         if s.row_name in st.session_state["ctrl_rows"] or s.col in st.session_state["ctrl_cols"]:
             s.type="Control"
 
@@ -410,14 +418,15 @@ elif st.session_state["analyze"] is True:
 
     if st.session_state["halo_toggle"] is True:
         # Detect Halos using the halo.detect method.
-        halos=msu.halo.detect(img=st.session_state["img"],
-                              min_xdist=st.session_state["adv_settings"]["halo_det"]["x_dist"],
-                              min_ydist=st.session_state["adv_settings"]["halo_det"]["y_dist"],
-                              thresh=st.session_state["adv_settings"]["halo_det"]["thresh"],
-                              min_rad=st.session_state["adv_settings"]["halo_det"]["low_rad"],
-                              max_rad=st.session_state["adv_settings"]["halo_det"]["high_rad"],
-                              min_obj_size=st.session_state["adv_settings"]["halo_det"]["min_obj"]
-                              )  
+        halos=msu.halo.detect(
+            img=st.session_state["img"],
+            min_xdist=st.session_state["adv_settings"]["halo_det"]["x_dist"],
+            min_ydist=st.session_state["adv_settings"]["halo_det"]["y_dist"],
+            thresh=st.session_state["adv_settings"]["halo_det"]["thresh"],
+            min_rad=st.session_state["adv_settings"]["halo_det"]["low_rad"],
+            max_rad=st.session_state["adv_settings"]["halo_det"]["high_rad"],
+            min_obj_size=st.session_state["adv_settings"]["halo_det"]["min_obj"]
+            )  
 
         # Assign halos to their spot and add the index of the spot to a list.
         halo_list=[]
@@ -457,7 +466,14 @@ elif st.session_state["analyze"] is True:
     with tab1:
         st.markdown("## Detected Spots")
         fig_img,ax=plt.subplots()
-        plots.plot_result(fig_img,ax,st.session_state["img"],df,st.session_state["grid"],halo=st.session_state["halo_toggle"])        
+        plots.plot_result(
+            figure=fig_img,
+            axs=ax,
+            img=st.session_state["img"],
+            df=df,
+            g_prop=st.session_state["grid"],
+            halo=st.session_state["halo_toggle"]
+            )        
         st.pyplot(fig_img)
         figuredict["img_results"]=fig_img
 
@@ -471,7 +487,14 @@ elif st.session_state["analyze"] is True:
         st.markdown("## Heatmap of Results")
         # Display Image and corresponding Heatmap
         fig_hm,ax=plt.subplots()
-        plots.plot_heatmapv2(fig_hm,ax,df,row_conv_inv,st.session_state["norm"])
+        plots.plot_heatmapv2(
+            figure=fig_hm,
+            axs=ax,
+            df=df,
+            conv_dict=row_conv_inv,
+            norm_data=st.session_state["norm"],
+            halo=st.session_state["halo_toggle"]
+            )
         st.pyplot(fig_hm)
         figuredict["heatmap"]=fig_hm
     
@@ -481,7 +504,12 @@ elif st.session_state["analyze"] is True:
         with col1:
             # Display the grid.
             fig_grid,ax=plt.subplots()
-            plots.plot_grid(fig_grid,ax,st.session_state["img"],hor_line+vert_line)
+            plots.plot_grid(
+                figure=fig_grid,
+                axs=ax,
+                img=st.session_state["img"],
+                lines=hor_line+vert_line
+                )
             st.pyplot(fig_grid)
             figuredict["detected_grid"]=fig_grid
 
