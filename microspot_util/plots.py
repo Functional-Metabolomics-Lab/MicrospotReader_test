@@ -96,13 +96,18 @@ def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False,halo:bool=True):
 
     figure.colorbar(sc,shrink=0.7,label=colorbar_name,orientation="horizontal",location="top")
 
-    marker_nohalo=Line2D([],[],color="white",markeredgecolor="dimgray",markerfacecolor="gray",marker="o")
-    marker_halo=Line2D([],[],color="white",markeredgecolor="red",markerfacecolor="gray",marker="o")
-    legend1 = axs.legend((marker_nohalo,marker_halo),("-","+"),title="Halo\nDetected",loc="upper left",bbox_to_anchor=(1,1),frameon=False)
-    axs.add_artist(legend1)
+    if halo:
+        marker_nohalo=Line2D([],[],color="white",markeredgecolor="dimgray",markerfacecolor="gray",marker="o")
+        marker_halo=Line2D([],[],color="white",markeredgecolor="red",markerfacecolor="gray",marker="o")
+        legend1 = axs.legend((marker_nohalo,marker_halo),("-","+"),title="Halo\nDetected",loc="upper left",bbox_to_anchor=(1,1),frameon=False)
+        axs.add_artist(legend1)
+
+        legendtitle="Radius of\nSpot or Halo"
+    else:
+        legendtitle="Radius of\nSpot"
 
     handles, labels = sc.legend_elements(prop="sizes", alpha=1,num=4,func=lambda x: x/4,color="dimgray",markeredgecolor="k")
-    legend2 = axs.legend(handles, labels, loc="lower left", title="Radius of\nSpot or Halo",bbox_to_anchor=(1, 0),
+    legend2 = axs.legend(handles, labels, loc="lower left", title=legendtitle,bbox_to_anchor=(1, 0),
                 frameon=False)
 
     figure.tight_layout()
