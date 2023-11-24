@@ -30,8 +30,10 @@ def init_sessionstate():
             "disable_mzml":True,        # Enables the "Annotate Data" button for mzml annotation if set to False
             "mzml_download":True,       # Activates the Download-Button for current results.
             "annot_mzml":None,          # Stores the final annotated mzML file.
-            "ctrl_rows":[],             # Row-Indexes of spots to be labeled as controls
-            "ctrl_cols":[],             # Column_Indexes of spots to be labeled as controls
+            "ctrl_rows":[],             # Rows not containing samples
+            "ctrl_cols":[],             # Columns not containing sampls
+            "ctrl_spots":[],            # Spot indices to be labeled as controls -> currently used for normalization
+            "norm_toggle":True,         # Enables normalization of spots if True
             "halo_toggle":True,         # Enables Halo detection if true.
             "norm":False,               # Keeps track of wheter data has been normalized during image analysis.
             "adv_settings":{"init_det":{},"grid_det":{},"spot_misc":{},"halo_det":{}}, # initializes dictionary containing all values from the advanced settings

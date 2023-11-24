@@ -78,9 +78,6 @@ if st.session_state["analyze"] is False:
             # Toggle the inversion of the grayscale image.
             invert=st.toggle("Invert grayscale Image",value=True)
 
-            # # Enables or disables the detection of Halos
-            # st.session_state["halo_toggle"]=st.toggle("Enable Halo detection",value=True)
-
             # Set the indexing for the last spot: Required for the calculation of grid parameters.
             last_spot=st.text_input("Index of Last Spot",placeholder="P20")
 
@@ -89,24 +86,42 @@ if st.session_state["analyze"] is False:
             st.session_state["init_analysis"]=False
             st.session_state["grid"]=msu.conv_gridinfo(first_spot,last_spot,row_conv)
 
-            with col1:
-                # Labels the selected rows as controls. All other spots are labeled as Samples
+            with col1: 
+                # Lists containing all rows, columns and indices:
+                rowlist=[row_conv_inv[i].upper() for i in range(
+                    st.session_state["grid"]["rows"]["bounds"][0],
+                    st.session_state["grid"]["rows"]["bounds"][1]+1
+                    )]
+                columnlist=list(
+                    range(
+                        st.session_state["grid"]["columns"]["bounds"][0],
+                        st.session_state["grid"]["columns"]["bounds"][1]+1
+                    ))
+                idxlist=[r+str(c) for r in rowlist for c in columnlist]
+
+                # Marks selected rows as not containing samples.
                 st.session_state["ctrl_rows"]=st.multiselect(
-                    'Select Rows to be labeled as "control"',
-                    [row_conv_inv[i].upper() for i in range(
-                        st.session_state["grid"]["rows"]["bounds"][0],
-                        st.session_state["grid"]["rows"]["bounds"][1]+1
-                        )])
+                    'Select rows that do not contain sample:',
+                    rowlist
+                    )
+                
+                st.session_state["ctrl_spots"]= st.multiselect(
+                    "Select spots to be used as controls:",
+                    idxlist
+                )
             
             with col2:
-                # Labels the selected columns as controls. All other spots are labeled as Samples
+                # Marks selected columns as not containing samples
                 st.session_state["ctrl_cols"]=st.multiselect(
-                    'Select Columns to be labeled as "control"',
-                    list(
-                        range(
-                            st.session_state["grid"]["columns"]["bounds"][0],
-                            st.session_state["grid"]["columns"]["bounds"][1]+1
-                            )))
+                    'Select columns that do not contain sample:',
+                    columnlist
+                    )
+
+                mst.v_space(2)
+                st.session_state["norm_toggle"]=st.toggle(
+                    "Normalize data using controls.",
+                    value=True
+                )
 
         # Disables start analysis button and sends out warning if not all settings have been set
         else:
@@ -347,7 +362,9 @@ elif st.session_state["analyze"] is True:
         small_rad=st.session_state["adv_settings"]["init_det"]["low_rad"],
         large_rad=st.session_state["adv_settings"]["init_det"]["high_rad"],
         )
-        
+    
+    avg_spotradius=np.mean([s.rad for s in init_spots])
+
     # Create an empty image and draw a dot for each detected spot.
     dot_img=np.zeros(st.session_state["img"].shape)
     for i_spot in init_spots: 
@@ -389,7 +406,7 @@ elif st.session_state["analyze"] is True:
     # Loop over all gridpoints and backfill the ones that are not associated with a spot.
     for g_point in grid_points:
         if g_point.min_dist>st.session_state["adv_settings"]["spot_misc"]["acceptance"]:
-            msu.spot.backfill(corr_spots,g_point.x,g_point.y)
+            msu.spot.backfill(corr_spots,g_point.x,g_point.y,avg_spotradius)
 
     # Assigns each spot a place on the grid.
     sort_spots=msu.spot.sort_grid(
@@ -406,10 +423,13 @@ elif st.session_state["analyze"] is True:
             st.session_state["adv_settings"]["spot_misc"]["int_rad"]
             )
         if s.row_name in st.session_state["ctrl_rows"] or s.col in st.session_state["ctrl_cols"]:
+            s.type=np.nan
+        
+        if s.row_name+str(s.col) in st.session_state["ctrl_spots"]:
             s.type="Control"
 
     # If controls are present, normalize the spot intensities 
-    if len(st.session_state["ctrl_rows"]) != 0 or len(st.session_state["ctrl_cols"])!=0:
+    if st.session_state["norm_toggle"] is True:
         msu.spot.normalize(sort_spots)
         st.session_state["norm"]=True
     

@@ -262,7 +262,7 @@ class spot:
     |row_name|Name of Row|
     |rt|Retention Time of Spot in s|
     """
-    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan,sample_type:str="Sample",norm_int:float=np.nan) -> None:
+    def __init__(self,x:float,y:float,rad:int=0,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan,sample_type:str="Sample",norm_int:float=np.nan) -> None:
         self.x=x
         self.y=y
         self.rad=rad
@@ -569,7 +569,7 @@ class spot:
 
 
     @staticmethod
-    def backfill(spot_list:list,x,y):
+    def backfill(spot_list:list,x,y,rad):
         """
         ## Description
 
@@ -581,13 +581,14 @@ class spot:
         |---|---|---|
         |spot_list|list|List of spot-objects to be backfilled|
         |x|float|x-coordinate of the spot to be backfilled|
-        |y|float|y-coordinate of the spot to be backfilled
+        |y|float|y-coordinate of the spot to be backfilled|
+        |rad|float|radius of the spot to be backfilled in pixels|
 
         ## Output
 
         None.
         """
-        spot_list.append(spot(int(x),int(y),note="Backfilled"))
+        spot_list.append(spot(int(x),int(y),int(rad),note="Backfilled"))
     
     @staticmethod
     def find_topleft(spot_list:list):
