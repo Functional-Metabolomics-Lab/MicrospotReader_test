@@ -30,9 +30,8 @@ with st.sidebar:
                 # Warning message if no name has been entered.
                 st.warning("Please enter a Name!")
 
-
-# Displays data that has been saved in the current session in tabular format.
-mst.datainfo()
+    # Displays data that has been saved in the current session in tabular format.
+    mst.datainfo()
 
 st.markdown("# Data Merging")
 
