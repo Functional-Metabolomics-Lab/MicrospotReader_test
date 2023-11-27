@@ -14,7 +14,7 @@ import numpy as np
 from pathlib import Path
 import streamlit as st
 import pyopenms as oms
-import scipy
+import scipy.signal as signal
 
 @st.cache_data
 def conv_gridinfo(point1:str,point2:str,conv_dict:dict) -> dict:
@@ -133,7 +133,7 @@ def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,windo
     # First time running the algo with a large window size to simply detect the general level of the baseline.
     rmsd_lvl=10
     while rmsd_lvl>conv_lvl:
-        sg_filt=scipy.signal.savgol_filter(baseline_level,window_lvl,poly_lvl)
+        sg_filt=signal.savgol_filter(baseline_level,window_lvl,poly_lvl)
         baseline_new=np.minimum(sg_filt,baseline_level)
         rmsd_lvl=np.sqrt(np.mean((baseline_new-baseline_level)**2))
         baseline_level=baseline_new
@@ -142,7 +142,7 @@ def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,windo
     # Note that for the new baseline first the filter result is compared to the previous baseline to find the minimum, this way peaks are removed from the baseline. Then the result is compared to the coarse baseline level to find areas that deviate too much.
     rmsd_noise=10
     while rmsd_noise>conv_noise:
-        sg_filt=scipy.signal.savgol_filter(baseline_noise,window_noise,poly_noise)
+        sg_filt=signal.savgol_filter(baseline_noise,window_noise,poly_noise)
         # baseline_new=np.maximum(np.minimum(test,baseline_noise),baseline_level)
         baseline=np.minimum(sg_filt,baseline_noise)        
         baseline_new=[]
@@ -158,6 +158,79 @@ def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,windo
 
     corr_ints=array-baseline_noise
     return baseline_noise,corr_ints
+
+def baseline_noise(array:pd.Series, convergence_criteria:float=0.02):
+    """
+    ## Description
+    Finds the standard deviation and mean of the baseline of a chromatogram
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |array|Seq, Array|Sequence for which the baseline noise should be determined|
+    |convergence_criteria|float|convergence criteria for filtering outliers|
+    
+    ## Returns
+    standard deviation of baseline
+    mean value of baseline
+    """
+    mn_old=array.mean()
+    std_old=array.std()
+
+    rmsd=10
+    while rmsd>convergence_criteria:
+        test=array[array<mn_old+3*std_old]
+        mn_new=test.mean()
+        std_new=test.std()
+        
+        rmsd=np.sqrt(np.mean((std_new-std_old)**2))
+        
+        mn_old=mn_new
+        std_old=std_new
+
+    return std_old,mn_old
+
+def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:float=0.95,datacolumn_name:str="norm_intensity"):
+    """
+    ## Description
+    Finds peaks and calculates the AUC in a spot-DataFrame
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |df|DataFrame|Spot-Dataframe to detect peaks in|
+    |baseline_convergence|float|Cutoff rmsd value for filtering outliers for baseline determination|
+    |rel_heigh|float|relative peak-height used as cutoff for AUC calculation|
+    |datacolumn_name|str|name of the df column containing the y data for peak detection|
+    
+    ## Returns
+    Dataframe containing information on peaks found in the spot-dataframe
+    """
+    bl_std,bl_mn=baseline_noise(df[datacolumn_name],baseline_convergence)
+    
+    peaks,_=signal.find_peaks(df[datacolumn_name],height=bl_mn+3*bl_std)
+
+    width,_,left_ips,right_ips=signal.peak_widths(df[datacolumn_name],peaks,rel_height=rel_height)
+
+    aft=pd.DataFrame(
+            {
+            "peak_idx":peaks,
+            "RT":df.loc[peaks,"RT"],
+            "width":width,
+            "left_ips":left_ips.astype("int32"),
+            "right_ips":right_ips.astype("int32"),
+            datacolumn_name:df.loc[peaks,datacolumn_name],
+            "AUC":np.nan
+            }
+        )
+
+    for idx in aft.index:
+        aft.loc[idx,"AUC"]=np.trapz(df.loc[aft.loc[idx,"left_ips"]:aft.loc[idx,"right_ips"],datacolumn_name])
+
+    return aft
+
 
 def annotate_mzml(exp:oms.MSExperiment(),spot_df:pd.DataFrame(),spot_mz:float, intensity_scalingfactor:float,norm_data:bool=True):
     """
@@ -225,6 +298,51 @@ def annotate_mzml(exp:oms.MSExperiment(),spot_df:pd.DataFrame(),spot_mz:float, i
     # Save the spectra-list to the MS Experiment
     exp.setSpectra(spec_list)
 
+def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:float=1000.0):
+    exp.sortSpectra(True)
+
+    mass_traces = []
+    mtd = oms.MassTraceDetection()
+    mtd_params = mtd.getDefaults()
+    mtd_params.setValue(
+        "mass_error_ppm", mass_error
+    )  # set according to your instrument mass error
+    mtd_params.setValue(
+        "noise_threshold_int", noise_threshold
+    )  # adjust to noise level in your data
+    mtd.setParameters(mtd_params)
+    mtd.run(exp, mass_traces, 0)
+
+    mass_traces_split = []
+    mass_traces_final = []
+    epd = oms.ElutionPeakDetection()
+    epd_params = epd.getDefaults()
+    epd_params.setValue("width_filtering", "fixed")
+    epd.setParameters(epd_params)
+    epd.detectPeaks(mass_traces, mass_traces_split)
+
+    if epd.getParameters().getValue("width_filtering") == "auto":
+        epd.filterByPeakWidth(mass_traces_split, mass_traces_final)
+    else:
+        mass_traces_final = mass_traces_split
+
+    fm = oms.FeatureMap()
+    feat_chrom = []
+    ffm = oms.FeatureFindingMetabo()
+    ffm_params = ffm.getDefaults()
+    ffm_params.setValue("isotope_filtering_model", "none")
+    ffm_params.setValue(
+        "remove_single_traces", "true"
+    )  # set false to keep features with only one mass trace
+    ffm_params.setValue("mz_scoring_by_elements", "false")
+    ffm_params.setValue("report_convex_hulls", "true")
+    ffm.setParameters(ffm_params)
+    ffm.run(mass_traces_final, fm, feat_chrom)
+
+    fm.setUniqueIds()
+    ft=fm.get_df()
+
+    return ft[["charge","RT","mz","RTstart","RTend","MZstart","MZend","quality","intensity"]]
 
 class spot:
     """

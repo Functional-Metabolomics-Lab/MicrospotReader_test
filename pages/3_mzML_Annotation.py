@@ -7,7 +7,6 @@ import pyopenms as oms
 import io
 from pyopenms.plotting import plot_chromatogram
 import matplotlib.pyplot as plt
-import tempfile
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()

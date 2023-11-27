@@ -142,6 +142,7 @@ def plot_heatmap(figure,axs,df,g_prop,norm_data:bool=False):
     figure.tight_layout()
 
 def plot_chromatogram(figure,axs,df,norm_data:bool=False):
+    df.sort_values("RT",inplace=True)
     if norm_data==False:
         axs.plot(df["RT"],df["spot_intensity"],c="k",linewidth=1)
         ylabel="Spot-Intensity [a.u.]"
@@ -178,3 +179,13 @@ def plot_mzml_chromatogram(figure,axs,exp,mz_val):
         xlim=[min(rt_list),max(rt_list)],
         )
     figure.tight_layout()
+
+def plot_activity_chromatogram(figure,axs,spot_df,peak_df,ydata_name="norm_intensity"):
+    std_old,mn_old=baseline_noise(spot_df[ydata_name])
+
+    axs.plot(spot_df.RT,spot_df[ydata_name],c="k",linewidth=1)
+    axs.set(ylabel=f"{ydata_name} [a.u.]",xlabel="retention time [s]")
+    axs.scatter(peak_df.RT,peak_df[ydata_name],marker="x",c="red")
+    axs.hlines([mn_old+3*std_old,mn_old-3*std_old],xmin=spot_df.RT.min(),xmax=spot_df.RT.max(),linewidth=1,colors="gray",ls="--")
+    for idx in peak_df.index:
+        axs.fill_between(spot_df.RT.loc[peak_df.loc[idx,"left_ips"]:peak_df.loc[idx,"right_ips"]],spot_df.loc[peak_df.loc[idx,"left_ips"]:peak_df.loc[idx,"right_ips"],ydata_name],color="lightblue")
