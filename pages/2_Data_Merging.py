@@ -114,8 +114,8 @@ if st.session_state["merge_state"]==True:
     elif st.session_state["addRT"]==True and st.session_state["ignoreCtrl"]==False:
         df["RT"]=np.linspace(t_0,t_end,num=len(df))
 
-    
     baseline,df.norm_intensity=msu.baseline_correction(df["norm_intensity"])
+
     # stores current data in a session state
     st.session_state["current_merge"]=df
 
