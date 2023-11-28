@@ -73,13 +73,18 @@ with st.form("Settings"):
             "Mass Error *[in ppm]*:",
             value=10.0
         )
+        
+        min_fwhm=st.number_input(
+            "Min. fwhm of peaks during feature detection *[in s]*:",
+            value=1.0
+        )
 
         rt_tolerance=st.number_input(
             "Retention Time tolerance *[in s]*",
             value=5
         )
 
-        st.number_input(
+        baseline_conv=st.number_input(
             "Convergence criteria for baseline determination:",
             value=0.02
         )
@@ -88,6 +93,11 @@ with st.form("Settings"):
         noise_threshold=st.number_input(
             "Noise Threshold:",
             value=10e5
+        )
+
+        max_fwhm=st.number_input(
+            "Max. fwhm of peaks during feature detection *[in s]*:",
+            value=60.0
         )
 
         value_col=st.selectbox(
@@ -118,13 +128,15 @@ with st.form("Settings"):
             exp=exp,
             mass_error=mass_error,
             noise_threshold=noise_threshold,
+            min_fwhm=float(min_fwhm),
+            max_fwhm=float(max_fwhm),
         )
 
         # Peak-detection in the activity chromatogram.
         merged_data.sort_values("RT",inplace=True)
         aft=msu.peak_detection(
             df=merged_data,
-            baseline_convergence=0.02,
+            baseline_convergence=baseline_conv,
             rel_height=0.95,
             datacolumn_name=value_col,
         )
@@ -135,7 +147,7 @@ with st.form("Settings"):
             rt_tolerance=rt_tolerance,
         )
         
-        st.session_state["results"]={"featuretable":ft,"activitytable":aft,"spot_df":merged_data,"val_col":value_col}
+        st.session_state["results"]={"featuretable":ft,"activitytable":aft,"spot_df":merged_data,"val_col":value_col,"baselineconv":baseline_conv}
         
 if st.session_state["results"] is not None:
 
@@ -152,7 +164,7 @@ if st.session_state["results"] is not None:
             spot_df=st.session_state["results"]["spot_df"],
             peak_df=st.session_state["results"]["activitytable"],
             ydata_name=st.session_state["results"]["val_col"],
-            baseline_acceptance=0.02
+            baseline_acceptance=st.session_state["results"]["baselineconv"]
         )
         st.pyplot(fig)
     

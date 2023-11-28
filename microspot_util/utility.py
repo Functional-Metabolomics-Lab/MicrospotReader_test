@@ -298,7 +298,7 @@ def annotate_mzml(exp:oms.MSExperiment(),spot_df:pd.DataFrame(),spot_mz:float, i
     # Save the spectra-list to the MS Experiment
     exp.setSpectra(spec_list)
 
-def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:float=1000.0):
+def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:float=1000.0,min_fwhm=1.0,max_fwhm=60.0):
     exp.sortSpectra(True)
 
     mass_traces = []
@@ -318,6 +318,8 @@ def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:f
     epd = oms.ElutionPeakDetection()
     epd_params = epd.getDefaults()
     epd_params.setValue("width_filtering", "fixed")
+    epd_params.setValue("min_fwhm",min_fwhm)
+    epd_params.setValue("max_fwhm",max_fwhm)
     epd.setParameters(epd_params)
     epd.detectPeaks(mass_traces, mass_traces_split)
 
