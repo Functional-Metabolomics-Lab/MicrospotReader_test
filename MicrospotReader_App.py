@@ -13,7 +13,8 @@ import microspot_util.plots as plots
 
 mst.page_setup()
 
-mst.datainfo()
+with st.sidebar:
+    mst.datainfo()
 
 st.image(r"assets/logo_uspotreader.png")
 

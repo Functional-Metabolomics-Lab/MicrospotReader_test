@@ -191,7 +191,7 @@ def baseline_noise(array:pd.Series, convergence_criteria:float=0.02):
 
     return std_old,mn_old
 
-def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:float=0.95,datacolumn_name:str="norm_intensity"):
+def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:float=0.95,min_dist:int=10,datacolumn_name:str="norm_intensity"):
     """
     ## Description
     Finds peaks and calculates the AUC in a spot-DataFrame
@@ -210,7 +210,7 @@ def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:fl
     """
     bl_std,bl_mn=baseline_noise(df[datacolumn_name],baseline_convergence)
     
-    peaks,_=signal.find_peaks(df[datacolumn_name],height=bl_mn+3*bl_std)
+    peaks,_=signal.find_peaks(df[datacolumn_name],height=bl_mn+3*bl_std,distance=min_dist)
 
     width,_,left_ips,right_ips=signal.peak_widths(df[datacolumn_name],peaks,rel_height=rel_height)
 
@@ -305,10 +305,10 @@ def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:f
     mtd = oms.MassTraceDetection()
     mtd_params = mtd.getDefaults()
     mtd_params.setValue(
-        "mass_error_ppm", mass_error
+        "mass_error_ppm", float(mass_error)
     )  # set according to your instrument mass error
     mtd_params.setValue(
-        "noise_threshold_int", noise_threshold
+        "noise_threshold_int", float(noise_threshold)
     )  # adjust to noise level in your data
     mtd.setParameters(mtd_params)
     mtd.run(exp, mass_traces, 0)
@@ -343,6 +343,24 @@ def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:f
     ft=fm.get_df()
 
     return ft[["charge","RT","mz","RTstart","RTend","MZstart","MZend","quality","intensity"]]
+
+def activity_annotation_features(ft:pd.DataFrame,aft:pd.DataFrame,rt_tolerance:int=5):
+    """
+    ## Description
+    Annotates the feature table from metabolomics feature detection with activity data from an activity feature table
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |ft|DataFrame|Feature table containing information on mz-value and retention time. retention time column must be called "RT"|
+    |aft|DataFrame|Activity feature table, contains information on activity at specific retention times|
+    |rt_tolerance|int|tolerance of rt in seconds within which features will be correlated|
+    """
+    for iat in aft.index:
+        ft[f"activity@{aft.loc[iat,'RT']}s"]=np.nan
+        test=rt_tolerance>=np.abs(ft["RT"]-aft.loc[iat,"RT"])
+        ft.loc[test,f"activity@{aft.loc[iat,'RT']}s"]=aft.loc[iat,"AUC"]
 
 class spot:
     """

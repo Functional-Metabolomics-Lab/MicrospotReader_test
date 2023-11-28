@@ -7,6 +7,7 @@ import matplotlib as mpl
 from .utility import *
 import math
 import pyopenms as oms
+import string
 
 def plot_grid(figure,axs,img,lines):
     axs.imshow(img)
@@ -180,12 +181,16 @@ def plot_mzml_chromatogram(figure,axs,exp,mz_val):
         )
     figure.tight_layout()
 
-def plot_activity_chromatogram(figure,axs,spot_df,peak_df,ydata_name="norm_intensity"):
-    std_old,mn_old=baseline_noise(spot_df[ydata_name])
+def plot_activity_chromatogram(figure,axs,spot_df,peak_df,baseline_acceptance:float=0.02,ydata_name="norm_intensity"):
+    std_old,mn_old=baseline_noise(spot_df[ydata_name],baseline_acceptance)
 
     axs.plot(spot_df.RT,spot_df[ydata_name],c="k",linewidth=1)
-    axs.set(ylabel=f"{ydata_name} [a.u.]",xlabel="retention time [s]")
+    axs.set(ylabel=f"{string.capwords(ydata_name.replace('_',' '))} [a.u.]",xlabel="Retention Time [s]")
     axs.scatter(peak_df.RT,peak_df[ydata_name],marker="x",c="red")
+    
     axs.hlines([mn_old+3*std_old,mn_old-3*std_old],xmin=spot_df.RT.min(),xmax=spot_df.RT.max(),linewidth=1,colors="gray",ls="--")
+    
     for idx in peak_df.index:
         axs.fill_between(spot_df.RT.loc[peak_df.loc[idx,"left_ips"]:peak_df.loc[idx,"right_ips"]],spot_df.loc[peak_df.loc[idx,"left_ips"]:peak_df.loc[idx,"right_ips"],ydata_name],color="lightblue")
+
+    figure.tight_layout()

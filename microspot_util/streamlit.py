@@ -37,6 +37,7 @@ def init_sessionstate():
             "halo_toggle":True,         # Enables Halo detection if true.
             "norm":False,               # Keeps track of wheter data has been normalized during image analysis.
             "adv_settings":{"init_det":{},"grid_det":{},"spot_misc":{},"halo_det":{}}, # initializes dictionary containing all values from the advanced settings
+            "results":None,             # variable containing results from feature detection and annotation
             }
 
     for name,state in states.items():
