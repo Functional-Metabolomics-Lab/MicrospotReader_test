@@ -406,7 +406,12 @@ elif st.session_state["analyze"] is True:
     # Loop over all gridpoints and backfill the ones that are not associated with a spot.
     for g_point in grid_points:
         if g_point.min_dist>st.session_state["adv_settings"]["spot_misc"]["acceptance"]:
-            msu.spot.backfill(corr_spots,g_point.x,g_point.y,avg_spotradius)
+            msu.spot.backfill(
+                corr_spots,
+                g_point.x,
+                g_point.y,
+                avg_spotradius
+            )
 
     # Assigns each spot a place on the grid.
     sort_spots=msu.spot.sort_grid(
@@ -414,14 +419,14 @@ elif st.session_state["analyze"] is True:
         row_conv=row_conv_inv,
         row_start=st.session_state["grid"]["rows"]["bounds"][0],
         col_start=st.session_state["grid"]["columns"]["bounds"][0]
-        )
+    )
 
     # Calculate the spot intensity and label controls
     for s in sort_spots:
         s.get_intensity(
             st.session_state["img"],
             st.session_state["adv_settings"]["spot_misc"]["int_rad"]
-            )
+        )
         if s.row_name in st.session_state["ctrl_rows"] or s.col in st.session_state["ctrl_cols"]:
             s.type=np.nan
         
@@ -446,7 +451,7 @@ elif st.session_state["analyze"] is True:
             min_rad=st.session_state["adv_settings"]["halo_det"]["low_rad"],
             max_rad=st.session_state["adv_settings"]["halo_det"]["high_rad"],
             min_obj_size=st.session_state["adv_settings"]["halo_det"]["min_obj"]
-            )  
+        )  
 
         # Assign halos to their spot and add the index of the spot to a list.
         halo_list=[]
@@ -493,7 +498,7 @@ elif st.session_state["analyze"] is True:
             df=df,
             g_prop=st.session_state["grid"],
             halo=st.session_state["halo_toggle"]
-            )        
+        )        
         st.pyplot(fig_img)
         figuredict["img_results"]=fig_img
 
@@ -514,7 +519,7 @@ elif st.session_state["analyze"] is True:
             conv_dict=row_conv_inv,
             norm_data=st.session_state["norm"],
             halo=st.session_state["halo_toggle"]
-            )
+        )
         st.pyplot(fig_hm)
         figuredict["heatmap"]=fig_hm
     
@@ -529,7 +534,7 @@ elif st.session_state["analyze"] is True:
                 axs=ax,
                 img=st.session_state["img"],
                 lines=hor_line+vert_line
-                )
+            )
             st.pyplot(fig_grid)
             figuredict["detected_grid"]=fig_grid
 
@@ -541,16 +546,7 @@ elif st.session_state["analyze"] is True:
 
     mst.v_space(1)
 
-    c1,c2,c3=st.columns(3)
-    with c3:
-        # Converts the dataframe to a .csv and adds a download button.
-        table=mst.convert_df(df)
-        st.download_button(
-            label="Download Spot-Data as .csv",
-            data=table,
-            mime="text/csv"
-            )
-
+    c1,c2=st.columns(2)
     with c2:
         # Creates a Zipfile containing all plots as .svg files on this page and makes it ready for download.
         mst.download_figures(figuredict,"svg")

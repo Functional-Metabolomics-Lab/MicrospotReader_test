@@ -214,7 +214,8 @@ def download_figures(figure_dict:dict,suffix:str="svg") -> None:
                 label=f"Download Plots as .{suffix}",
                 data=io.BytesIO(zip_download.read()),
                 mime=".zip",
-                file_name="plots_img-analysis.zip"
+                file_name="plots_img-analysis.zip",
+                use_container_width=True
                 )
 
 def download_mzml(exp):
@@ -227,4 +228,5 @@ def download_mzml(exp):
             data=io.BytesIO(mzml_file.read()),
             mime=".mzML",
             file_name="annotated_file.mzML",
+            use_container_width=True
             )

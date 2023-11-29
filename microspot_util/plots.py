@@ -69,7 +69,7 @@ def plot_result(figure,axs,img,df,g_prop,halo:bool=True):
 
 def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False,halo:bool=True):
 
-    if norm_data:
+    if norm_data is True:
         intensity="norm_intensity"
         colorbar_name="Normalized Spot Intensity [a.u.]"
     else:

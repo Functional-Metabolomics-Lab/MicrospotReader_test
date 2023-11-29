@@ -17,15 +17,26 @@ with st.sidebar:
         
         # Name of data, is customizable by user
         with c2:
-            data_name=st.text_input("Name your Data",placeholder="Name your Data",label_visibility="collapsed")
+            data_name=st.text_input(
+                "Name your Data",
+                placeholder="Name your Data",
+                label_visibility="collapsed"
+            )
 
         # Adds the data to the current session, storage is explaned in the documentation of the add_mergedata function.            
         with c1:
-            add=st.form_submit_button("Add Merged Data to Session",type="primary",use_container_width=True,disabled=not st.session_state["merge_state"])
+            add=st.form_submit_button(
+                "Add Merged Data to Session",
+                type="primary",
+                use_container_width=True,
+                disabled=not st.session_state["merge_state"]
+            )
 
         if add:
+            
             if len(data_name)>0:
                 mst.add_mergedata(data_name)
+            
             else:
                 # Warning message if no name has been entered.
                 st.warning("Please enter a Name!")
@@ -36,7 +47,10 @@ with st.sidebar:
 st.markdown("# Data Merging")
 
 # Selection between custom file upload or selection from saved data in the current session
-choose_input=st.selectbox("File upload:",["Use Selection in current Session","Upload Data"])
+choose_input=st.selectbox(
+    "File upload:",
+    ["Use Selection in current Session","Upload Data"]
+)
 
 # Loading data for selection of stored session data.
 if choose_input=="Use Selection in current Session":
@@ -46,7 +60,13 @@ if choose_input=="Use Selection in current Session":
     # If the List contains data, enable Merge Data button and display the names of the spotlists.
     if len(data_list)>0: 
         st.session_state["mergedata_loaded"]=False
-        st.dataframe(st.session_state["img_df"].loc[st.session_state["img_df"]["Select"]==True,"Name"],column_config={"Name":"Selected Datasets:"},use_container_width=True,hide_index=True)
+        
+        st.dataframe(
+            st.session_state["img_df"].loc[st.session_state["img_df"]["Select"]==True,"Name"],
+            column_config={"Name":"Selected Datasets:"},
+            use_container_width=True,
+            hide_index=True
+        )
     
     # Disable "Merge Data" button if list does not contain data
     else:
@@ -55,7 +75,12 @@ if choose_input=="Use Selection in current Session":
 # Loading uploaded data
 elif choose_input=="Upload Data":
     # List of uploaded files.
-    upload_list=st.file_uploader("Upload all .csv files.","csv",accept_multiple_files=True,on_change=mst.reset_merge)
+    upload_list=st.file_uploader(
+        "Upload all .csv files.",
+        "csv",
+        accept_multiple_files=True,
+        on_change=mst.reset_merge
+    )
 
     # convert .csv files to lists of spots and store in a list
     data_list=[msu.spot.df_to_list(pd.read_csv(item)) for item in upload_list]
@@ -74,21 +99,56 @@ c1,c2=st.columns(2)
 
 with c1:
     # Toggle the annotation of all spots with a retention time
-    st.toggle("Add Retention-Time",key="addRT",on_change=mst.reset_merge)
+    st.toggle(
+        "Add Retention-Time",
+        key="addRT",
+        on_change=mst.reset_merge
+    )
     # Toggle serpentine sorting, if enabled spots are sorted in a serpentine pattern
-    st.toggle("Serpentine Path",key="serpentine",on_change=mst.reset_merge,disabled=not st.session_state["addRT"])
+    st.toggle(
+        "Serpentine Path",
+        key="serpentine",
+        on_change=mst.reset_merge,
+        disabled=not st.session_state["addRT"]
+    )
     # Input for the retention time at which spotting was started
-    t_0=st.number_input("Start Time [s]",value=0,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
+    t_0=st.number_input(
+        "Start Time [s]",
+        value=0,
+        disabled=not st.session_state["addRT"],
+        on_change=mst.reset_merge
+    )
     # Button starting the data merging process.
-    st.button("Merge Data",disabled=st.session_state["mergedata_loaded"],type="primary",on_click=mst.merge_settings)
+    st.button(
+        "Merge Data",
+        disabled=st.session_state["mergedata_loaded"],
+        type="primary",
+        on_click=mst.merge_settings
+    )
 
 with c2:
     # Toggle the use of normalized data
-    st.toggle("Use normalized Data for Visualization",key="toggleNorm",on_change=mst.reset_merge)
+    st.selectbox(
+            "Column containing activity data:",
+            ["norm_intensity","spot_intensity"],
+            index=0,
+            key="toggleNorm"
+        )
     # Toggle to ignore spots of type "control" when adding the retention time. Set this to true if a row or column is used as control that was not spotted using the microspotter set-up.
-    st.toggle("Ignore controls when adding RT",value=True, on_change=mst.reset_merge, key="ignoreCtrl",disabled=not st.session_state["addRT"])
+    st.toggle(
+        "Ignore controls when adding RT",
+        value=True, 
+        on_change=mst.reset_merge, 
+        key="ignoreCtrl",
+        disabled=not st.session_state["addRT"]
+    )
     # Time each spot was eluted to.
-    t_end=st.number_input("End Time [s]",value=520,disabled=not st.session_state["addRT"],on_change=mst.reset_merge)
+    t_end=st.number_input(
+        "End Time [s]",
+        value=520,
+        disabled=not st.session_state["addRT"],
+        on_change=mst.reset_merge
+    )
 
 # Initializes the merging process if the "Merge Data" button was pressed
 if st.session_state["merge_state"]==True:
@@ -102,19 +162,33 @@ if st.session_state["merge_state"]==True:
     last_spot=merged_spots[-1].row_name+str(merged_spots[-1].col)
 
     # Sorts the spots according to the settings
-    msu.spot.sort_list(merged_spots,serpentine=st.session_state["serpentine"],inplace=True)
+    msu.spot.sort_list(
+        merged_spots,
+        serpentine=st.session_state["serpentine"],
+        inplace=True
+    )
 
     # Create a dataframe from the spot-data
     df=msu.spot.create_df(merged_spots)
     
     # Annotation of all spots with a retention time if enabled
     if st.session_state["addRT"]==True and st.session_state["ignoreCtrl"]==True:
-        df.loc[df["type"]=="Sample","RT"]=np.linspace(t_0,t_end,num=len(df.loc[df["type"]=="Sample"]))
+        
+        df.loc[df["type"]=="Sample","RT"]=np.linspace(
+            t_0,
+            t_end,
+            num=len(df.loc[df["type"]=="Sample"])
+        )
     
     elif st.session_state["addRT"]==True and st.session_state["ignoreCtrl"]==False:
-        df["RT"]=np.linspace(t_0,t_end,num=len(df))
+        
+        df["RT"]=np.linspace(
+            t_0,
+            t_end,
+            num=len(df)
+        )
 
-    baseline,df.norm_intensity=msu.baseline_correction(df["norm_intensity"])
+    baseline,df.norm_intensity=msu.baseline_correction(df[st.session_state["toggleNorm"]])
 
     # stores current data in a session state
     st.session_state["current_merge"]=df
@@ -134,7 +208,12 @@ if st.session_state["merge_state"]==True:
         with t3:
             # Plot a chromatogramm of spot intensities 
             fig,ax=plt.subplots()
-            plots.plot_chromatogram(fig,ax,df,norm_data=st.session_state["toggleNorm"])
+            plots.plot_chromatogram(
+                figure=fig,
+                axs=ax,
+                df=df,
+                norm_data=st.session_state["toggleNorm"]=="norm_intensity"
+            )
             st.pyplot(fig)
             
 
@@ -145,13 +224,24 @@ if st.session_state["merge_state"]==True:
     with t1:
         # Display merged table
         st.dataframe(df)
-
+        
     with t2:
         # display heatmap of merged data
         fig,ax=plt.subplots()
-        plots.plot_heatmap(fig,ax,df,grid_props,norm_data=st.session_state["toggleNorm"])
+        plots.plot_heatmapv2(
+            figure=fig,
+            axs=ax,
+            df=df,
+            conv_dict=row_conv_inv,
+            norm_data=st.session_state["toggleNorm"]=="norm_intensity",
+            halo=any(df.halo>0)
+        )
         st.pyplot(fig)
 
     # Download data
     table=mst.convert_df(df)
-    st.download_button(label="Download Merged Data as .csv",data=table,mime="text/csv")
+    st.download_button(
+        label="Download Merged Data as .csv",
+        data=table,
+        mime="text/csv"
+    )
