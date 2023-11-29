@@ -318,8 +318,8 @@ def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:f
     epd = oms.ElutionPeakDetection()
     epd_params = epd.getDefaults()
     epd_params.setValue("width_filtering", "fixed")
-    epd_params.setValue("min_fwhm",min_fwhm)
-    epd_params.setValue("max_fwhm",max_fwhm)
+    epd_params.setValue("min_fwhm",float(min_fwhm))
+    epd_params.setValue("max_fwhm",float(max_fwhm))
     epd.setParameters(epd_params)
     epd.detectPeaks(mass_traces, mass_traces_split)
 
