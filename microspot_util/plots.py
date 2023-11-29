@@ -81,7 +81,9 @@ def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False,halo:bool=True):
     data["color"]="dimgray"
     data.loc[data.halo>0,"color"]="red"
 
-    sc=axs.scatter(data.column, -data.row, s=data.radius*4, c=data[intensity], cmap="viridis",edgecolors=data.color);
+    rad_factor=220/data.radius.max()
+
+    sc=axs.scatter(data.column, -data.row, s=data.radius*rad_factor, c=data[intensity], cmap="viridis",edgecolors=data.color);
     axs.set(     
         aspect="equal",
         ylabel="Row",
@@ -107,7 +109,7 @@ def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False,halo:bool=True):
     else:
         legendtitle="Radius of\nSpot"
 
-    handles, labels = sc.legend_elements(prop="sizes", alpha=1,num=4,func=lambda x: x/4,color="dimgray",markeredgecolor="k")
+    handles, labels = sc.legend_elements(prop="sizes", alpha=1,num=4,func=lambda x: x/rad_factor,color="dimgray",markeredgecolor="k")
     legend2 = axs.legend(handles, labels, loc="lower left", title=legendtitle,bbox_to_anchor=(1, 0),
                 frameon=False)
 
