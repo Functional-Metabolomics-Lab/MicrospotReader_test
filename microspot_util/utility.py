@@ -221,6 +221,8 @@ def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:fl
             "width":width,
             "left_ips":left_ips.astype("int32"),
             "right_ips":right_ips.astype("int32"),
+            "RTstart":np.array(df.loc[left_ips.astype("int32"),"RT"]),
+            "RTend":np.array(df.loc[right_ips.astype("int32"),"RT"]),
             datacolumn_name:df.loc[peaks,datacolumn_name],
             "AUC":np.nan
             }
