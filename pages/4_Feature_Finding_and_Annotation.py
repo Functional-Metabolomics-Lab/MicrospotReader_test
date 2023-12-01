@@ -159,6 +159,8 @@ with st.form("Settings"):
         st.session_state["results"]={
             "featuretable":ft,
             "activitytable":aft,
+            "ft_peaks":{f"peak{pk}":ft.loc[ft[f"corr_activity_peak{pk}"]>0].copy() for pk in aft.index},
+            "xics":xic_dict,
             "spot_df":merged_data,
             "val_col":value_col,
             "baselineconv":baseline_conv
@@ -166,12 +168,16 @@ with st.form("Settings"):
         
 if st.session_state["results"] is not None:
 
-    t1,t2,t3=st.tabs(["Annotated feature table","Activity chromatogram","Peak data"])
+    st.markdown("## Results")
 
-    with t1:
+    t1,t2,t3=st.tabs(["Activity peak data",'Significant active features','Complete feature table'])
+
+    with t3:
         st.dataframe(st.session_state["results"]["featuretable"])
 
-    with t2:
+    with t1:
+        st.dataframe(st.session_state["results"]["activitytable"], use_container_width=True)
+
         fig,ax=plt.subplots()
         plots.plot_activity_chromatogram(
             figure=fig,
@@ -182,6 +188,57 @@ if st.session_state["results"] is not None:
             baseline_acceptance=st.session_state["results"]["baselineconv"]
         )
         st.pyplot(fig)
-    
-    with t3:
-        st.dataframe(st.session_state["results"]["activitytable"])
+
+    with t2:
+        threshold=st.number_input(
+            "Threshold for Pearson Correlation Coefficient:",
+            max_value=1.0,
+            min_value=0.0,
+            value=0.8
+        )
+        
+        namelist=["Don't Display"]
+        for name,pft in st.session_state["results"]["ft_peaks"].items():
+            st.markdown(f"**Significant features for `{name}`**")
+            st.dataframe(pft.loc[pft[f"pearson_corr_{name}"]>=threshold].sort_values(f"pearson_corr_{name}",ascending=False))
+            namelist.append(name)
+            mst.v_space(2)
+        
+        dip_featurealignment=st.radio(
+            "Display alignment of activity peak with significant features:",
+            namelist,
+            index=0
+        )
+
+        if dip_featurealignment!="Don't Display":
+            ft=st.session_state['results']['ft_peaks'][dip_featurealignment].loc[st.session_state['results']['ft_peaks'][dip_featurealignment][f"pearson_corr_{dip_featurealignment}"]>threshold].sort_values(f"pearson_corr_{dip_featurealignment}",ascending=False)
+            
+            for i in ft.index:
+                df=st.session_state["results"]["xics"][i]
+        
+                fig,ax=plt.subplots()
+                ax.plot(df.rt-ft.loc[i,"RT"],df.int)
+                
+                ax.set(
+                    ylabel="Intensity MS-signal [a.u.]",
+                    xlabel="ΔRT from Peak-maximum [s]"
+                )
+                
+                ax2=ax.twinx()
+                ax2.plot(
+                    st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[0,"start_idx"]:st.session_state["results"]["activitytable"].loc[0,"end_idx"],"RT"]-st.session_state["results"]["activitytable"].loc[0,"RT"],
+                    st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[0,"start_idx"]:st.session_state["results"]["activitytable"].loc[0,"end_idx"],"norm_intensity"],
+                    c="k"
+                )
+
+                ax2.set(
+                    ylabel="Intensity activity-signal [a.u.]"
+                )
+                fig.legend(
+                    ["Feature-peak","Activity-peak"],
+                    loc="upper right",
+                    bbox_to_anchor=(0.9,0.94),
+                    title=f"m/z: {ft.loc[i,'mz']:.4f} \nRT: {ft.loc[i,'RT']:.1f}s \nCorr. coeff: {ft.loc[i,f'pearson_corr_{dip_featurealignment}']:.4f}"
+                )
+                fig.tight_layout()
+                st.pyplot(fig)
