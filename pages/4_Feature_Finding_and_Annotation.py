@@ -92,7 +92,7 @@ with st.form("Settings"):
     with c2:
         noise_threshold=st.number_input(
             "Noise Threshold:",
-            value=10e5
+            value=1e5
         )
 
         max_fwhm=st.number_input(
@@ -132,6 +132,12 @@ with st.form("Settings"):
             max_fwhm=float(max_fwhm),
         )
 
+        # Generation of xics for all features in ft.
+        xic_dict=msu.xic_generator(
+            exp=exp,
+            ft=ft
+        )
+
         # Peak-detection in the activity chromatogram.
         merged_data.sort_values("RT",inplace=True)
         aft=msu.peak_detection(
@@ -145,9 +151,18 @@ with st.form("Settings"):
             ft=ft,
             aft=aft,
             rt_tolerance=rt_tolerance,
+            act_df=merged_data,
+            xic_dict=xic_dict,
+            ydata_name=value_col
         )
         
-        st.session_state["results"]={"featuretable":ft,"activitytable":aft,"spot_df":merged_data,"val_col":value_col,"baselineconv":baseline_conv}
+        st.session_state["results"]={
+            "featuretable":ft,
+            "activitytable":aft,
+            "spot_df":merged_data,
+            "val_col":value_col,
+            "baselineconv":baseline_conv
+        }
         
 if st.session_state["results"] is not None:
 

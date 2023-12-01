@@ -188,12 +188,13 @@ def plot_activity_chromatogram(figure,axs,spot_df,peak_df,baseline_acceptance:fl
 
     axs.plot(spot_df.RT,spot_df[ydata_name],c="k",linewidth=1)
     axs.set(ylabel=f"{string.capwords(ydata_name.replace('_',' '))} [a.u.]",xlabel="Retention Time [s]")
-    axs.scatter(peak_df.RT,peak_df[ydata_name],marker="x",c="red")
+    axs.scatter(peak_df.RT,peak_df.max_int,marker="x",c="red")
     
     axs.hlines([mn_old+3*std_old,mn_old-3*std_old],xmin=spot_df.RT.min(),xmax=spot_df.RT.max(),linewidth=1,colors="gray",ls="--")
     
     for idx in peak_df.index:
-        axs.fill_between(spot_df.RT.loc[peak_df.loc[idx,"left_ips"]:peak_df.loc[idx,"right_ips"]],spot_df.loc[peak_df.loc[idx,"left_ips"]:peak_df.loc[idx,"right_ips"],ydata_name],color="lightblue")
-        axs.text(peak_df.loc[idx,"RT"]*1.01, peak_df.loc[idx,ydata_name]*1.01, f'peak{idx}',c="k",size=7)
+        axs.fill_between(spot_df.RT.loc[peak_df.loc[idx,"start_idx"]:peak_df.loc[idx,"end_idx"]],spot_df.loc[peak_df.loc[idx,"start_idx"]:peak_df.loc[idx,"end_idx"],ydata_name],color="lightblue")
+        axs.text(peak_df.loc[idx,"RT"]*1.01, peak_df.loc[idx,"max_int"]*1.01, f'peak{idx}',c="k",size=7)
+    axs.legend(["Chromatogram","Detected Peaks","Baseline-Noise"])
 
     figure.tight_layout()

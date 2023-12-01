@@ -213,24 +213,23 @@ def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:fl
     
     peaks,_=signal.find_peaks(df[datacolumn_name],height=bl_mn+3*bl_std,distance=min_dist)
 
-    width,_,left_ips,right_ips=signal.peak_widths(df[datacolumn_name],peaks,rel_height=rel_height)
+    _,_,left_ips,right_ips=signal.peak_widths(df[datacolumn_name],peaks,rel_height=rel_height)
 
     aft=pd.DataFrame(
             {
             "peak_idx":peaks,
             "RT":df.loc[peaks,"RT"].values,
-            "width":width,
-            "left_ips":left_ips.astype("int32"),
-            "right_ips":right_ips.astype("int32"),
+            "start_idx":left_ips.astype("int32"),
+            "end_idx":right_ips.astype("int32"),
             "RTstart":df.loc[left_ips.astype("int32"),"RT"].values,
             "RTend":df.loc[right_ips.astype("int32"),"RT"].values,
-            datacolumn_name:df.loc[peaks,datacolumn_name].values,
+            "max_int":df.loc[peaks,datacolumn_name].values,
             "AUC":np.nan
             }
         ).rename_axis("peak_nr")
 
     for idx in aft.index:
-        aft.loc[idx,"AUC"]=np.trapz(df.loc[aft.loc[idx,"left_ips"]:aft.loc[idx,"right_ips"],datacolumn_name])
+        aft.loc[idx,"AUC"]=np.trapz(df.loc[aft.loc[idx,"start_idx"]:aft.loc[idx,"end_idx"],datacolumn_name])
 
     return aft
 
@@ -457,7 +456,7 @@ def peakshape_corr(xic_dict:dict,ft:pd.DataFrame,ap_df:pd.DataFrame,act_df:pd.Da
     """
     pk=ap_df.loc[idx].copy()
 
-    cutap=act_df.loc[pk["left_ips"]:pk["right_ips"]].copy()
+    cutap=act_df.loc[pk["start_idx"]:pk["end_idx"]].copy()
     cutap[ydata_name]=cutap[ydata_name]/cutap[ydata_name].max()
     width=np.abs(pk["RTend"]-pk["RTstart"])
 
@@ -557,7 +556,7 @@ class spot:
     def get_intensity(self,img:np.array,rad:int=None) -> None:
         """
         ## Description
-        
+
         Determines the average pixel-intensity of a spot in an image.
 
         ## Input
