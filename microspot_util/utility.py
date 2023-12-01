@@ -15,6 +15,7 @@ from pathlib import Path
 import streamlit as st
 import pyopenms as oms
 import scipy.signal as signal
+import scipy.stats as stats
 
 @st.cache_data
 def conv_gridinfo(point1:str,point2:str,conv_dict:dict) -> dict:
@@ -217,22 +218,21 @@ def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:fl
     aft=pd.DataFrame(
             {
             "peak_idx":peaks,
-            "RT":df.loc[peaks,"RT"],
+            "RT":df.loc[peaks,"RT"].values,
             "width":width,
             "left_ips":left_ips.astype("int32"),
             "right_ips":right_ips.astype("int32"),
-            "RTstart":np.array(df.loc[left_ips.astype("int32"),"RT"]),
-            "RTend":np.array(df.loc[right_ips.astype("int32"),"RT"]),
-            datacolumn_name:df.loc[peaks,datacolumn_name],
+            "RTstart":df.loc[left_ips.astype("int32"),"RT"].values,
+            "RTend":df.loc[right_ips.astype("int32"),"RT"].values,
+            datacolumn_name:df.loc[peaks,datacolumn_name].values,
             "AUC":np.nan
             }
-        )
+        ).rename_axis("peak_nr")
 
     for idx in aft.index:
         aft.loc[idx,"AUC"]=np.trapz(df.loc[aft.loc[idx,"left_ips"]:aft.loc[idx,"right_ips"],datacolumn_name])
 
     return aft
-
 
 def annotate_mzml(exp:oms.MSExperiment(),spot_df:pd.DataFrame(),spot_mz:float, intensity_scalingfactor:float,norm_data:bool=True):
     """
@@ -348,9 +348,127 @@ def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:f
 
     return ft[["charge","RT","mz","RTstart","RTend","MZstart","MZend","quality","intensity"]]
 
-def activity_annotation_features(ft:pd.DataFrame,aft:pd.DataFrame,rt_tolerance:int=5):
+def xic_generator(exp:oms.MSExperiment, ft:pd.DataFrame):
     """
     ## Description
+
+    Creates feature-XICs and stores them in a dictionary as DataFrames from an oms.MSExperiment object. 
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |ft|DataFrame|Feature table containing information on mz-value and retention time. retention time column must be called "RT"|
+    |exp|oms.MSExperiment|MSExperiment object containing the LC-MS run from which the features were determined|
+
+    ## Output
+
+
+    """
+    specs={spec.getRT():{"mz":spec.get_peaks()[0],"int":spec.get_peaks()[1]} for spec in exp if spec.getMSLevel()==1}
+
+    xics={}
+    for i in ft.index:
+        
+        intsum_list=[]
+        rtlist=[]
+
+        for rt,pk in specs.items():
+
+            if rt >= ft.loc[i,"RTstart"] and rt <= ft.loc[i,"RTend"]:
+
+                intsum_list.append(pk["int"][(ft.loc[i,"MZstart"]<=pk["mz"]) & (ft.loc[i,"MZend"]>=pk["mz"])].sum())
+                rtlist.append(rt)
+
+        xics[i]=pd.DataFrame({"rt":rtlist,"int":intsum_list})
+    
+    return xics
+
+def extract_xic_peakwindow(xic_dict:dict,ft:pd.DataFrame,window:float):
+    """
+    ## Description
+
+    Calculates the pearson correlation coefficient of a normalized activity peak to a normalized feature-peak correlated to the activity peak by retention time.
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |ft|DataFrame|Feature table containing information on mz-value and retention time. retention time column must be called "RT"|
+    |xic_dict|dict|Dictionary containing the xics of all features|
+    |window|float|window in [s] around the peak that is extracted|
+    
+    ## Output
+
+    Dictionary containing DataFrames containing the chromatograms of the peaks extracted from the feature-chromatograms.
+    """
+    cutxic={}
+    for i, df in xic_dict.items():
+        df_cut=df.loc[(df["rt"]>ft.loc[i,"RT"]-0.5*window)&(df["rt"]<ft.loc[i,"RT"]+0.5*window)].copy()
+        df_cut["int"]=df_cut.loc[:,"int"]/(df_cut.loc[:,"int"].max())
+        cutxic[i]=df_cut
+    return cutxic
+
+def peak_pearsoncorr(xic_dict,ft,ap_df,peak,idx,ydata_name):
+    """
+    ## Description
+
+    Calculates the pearson correlation coefficient of a normalized activity peak to a normalized feature-peak correlated to the activity peak by retention time.
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |ft|DataFrame|Feature table containing information on mz-value and retention time. retention time column must be called "RT"|
+    |ap_df|DataFrame|Activity peak table, contains information on activity peaks at specific retention times|
+    |peak|DataFrame|Activity peak used during the correlation|
+    |xic_dict|dict|Dictionary containing the xics of all features|
+    |idx|int|index of the current row in the feature table|
+    |ydata_name|str|Name of the Column in act_df containing the y-axis information of the activity chromatogram|
+    """
+
+    for i in ft.loc[ft[f"corr_activity_peak{idx}"]>0].index:
+        df=xic_dict[i]
+        if len(df)>=len(ap_df):
+            interpRT=np.linspace(peak.RTstart,peak.RTend,len(df))
+            interpInt=np.interp(interpRT,ap_df["RT"],ap_df[ydata_name])
+            ft.loc[i,f"pearson_corr_peak{idx}"]=stats.pearsonr(df["int"],interpInt).statistic
+        else:
+            interpRT=np.linspace(df.rt.iloc[0],df.rt.iloc[-1],len(ap_df))
+            interpInt=np.interp(interpRT,df.rt,df["int"])
+            ft.loc[i,f"pearson_corr_peak{idx}"]=stats.pearsonr(interpInt,ap_df[ydata_name]).statistic
+
+def peakshape_corr(xic_dict:dict,ft:pd.DataFrame,ap_df:pd.DataFrame,act_df:pd.DataFrame,idx:int,ydata_name:str="norm_intensity"):
+    """
+    ## Description
+
+    Calculates the pearson correlation coefficient of each normalized activity peak to all normalized feature-peaks correlated to the activity peak by retention time.
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |ft|DataFrame|Feature table containing information on mz-value and retention time. retention time column must be called "RT"|
+    |ap_df|DataFrame|Activity peak table, contains information on activity peaks at specific retention times|
+    |act_df|DataFrame|Dataframe resulting from the data merging step of the microspot reader workflow|
+    |xic_dict|dict|Dictionary containing the xics of all features|
+    |idx|int|index of the current row in the feature table|
+    |ydata_name|str|Name of the Column in act_df containing the y-axis information of the activity chromatogram|
+    """
+    pk=ap_df.loc[idx].copy()
+
+    cutap=act_df.loc[pk["left_ips"]:pk["right_ips"]].copy()
+    cutap[ydata_name]=cutap[ydata_name]/cutap[ydata_name].max()
+    width=np.abs(pk["RTend"]-pk["RTstart"])
+
+    cutxic=extract_xic_peakwindow(xic_dict,ft,width)
+    
+    peak_pearsoncorr(cutxic,ft,cutap,pk,idx,ydata_name)
+
+def activity_annotation_features(ft:pd.DataFrame,aft:pd.DataFrame,act_df:pd.DataFrame,xic_dict:dict,rt_tolerance:float,ydata_name:str="norm_intensity"):
+    """
+    ## Description
+
     Annotates the feature table from metabolomics feature detection with activity data from an activity feature table
     
     ## Input
@@ -358,13 +476,16 @@ def activity_annotation_features(ft:pd.DataFrame,aft:pd.DataFrame,rt_tolerance:i
     |Parameter|Type|Description|
     |---|---|---|
     |ft|DataFrame|Feature table containing information on mz-value and retention time. retention time column must be called "RT"|
-    |aft|DataFrame|Activity feature table, contains information on activity at specific retention times|
-    |rt_tolerance|int|tolerance of rt in seconds within which features will be correlated|
+    |aft|DataFrame|Activity peak table, contains information on activity peaks at specific retention times|
+    |act_df|DataFrame|Dataframe resulting from the data merging step of the microspot reader workflow|
+    |xic_dict|dict|Dictionary containing the xics of all features|
+    |rt_tolerance|float|tolerance of rt in seconds within which features will be correlated|
+    |ydata_name|str|Name of the Column in act_df containing the y-axis information of the activity chromatogram|
     """
     for iat in aft.index:
-        ft[f"activity@{aft.loc[iat,'RT']}s"]=np.nan
-        test=rt_tolerance>=np.abs(ft["RT"]-aft.loc[iat,"RT"])
-        ft.loc[test,f"activity@{aft.loc[iat,'RT']}s"]=aft.loc[iat,"AUC"]
+        ft.loc[rt_tolerance>=np.abs(ft["RT"]-aft.loc[iat,"RT"]),f"corr_activity_peak{iat}"]=aft.loc[iat,"AUC"]
+
+        peakshape_corr(xic_dict,ft,aft,act_df,iat,ydata_name)
 
 class spot:
     """
@@ -419,6 +540,7 @@ class spot:
     def assign_halo(self,halo_list:list,dist_thresh:float=14.73402725) -> None:
         """
         ## Description
+
         Checks a list of halos for a match and assigns it to the spot.
 
         ## Input
@@ -435,6 +557,7 @@ class spot:
     def get_intensity(self,img:np.array,rad:int=None) -> None:
         """
         ## Description
+        
         Determines the average pixel-intensity of a spot in an image.
 
         ## Input

@@ -194,5 +194,6 @@ def plot_activity_chromatogram(figure,axs,spot_df,peak_df,baseline_acceptance:fl
     
     for idx in peak_df.index:
         axs.fill_between(spot_df.RT.loc[peak_df.loc[idx,"left_ips"]:peak_df.loc[idx,"right_ips"]],spot_df.loc[peak_df.loc[idx,"left_ips"]:peak_df.loc[idx,"right_ips"],ydata_name],color="lightblue")
+        axs.text(peak_df.loc[idx,"RT"]*1.01, peak_df.loc[idx,ydata_name]*1.01, f'peak{idx}',c="k",size=7)
 
     figure.tight_layout()
