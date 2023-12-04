@@ -147,17 +147,16 @@ def plot_heatmap(figure,axs,df,g_prop,norm_data:bool=False):
 def plot_chromatogram(figure,axs,df,norm_data:bool=False):
     df.sort_values("RT",inplace=True)
     if norm_data==False:
-        axs.plot(df["RT"],df["spot_intensity"],c="k",linewidth=1)
+        axs.plot(df["RT"],df["spot_intensity"],c="darkviolet",linewidth=1)
         ylabel="Spot-Intensity [a.u.]"
 
     elif norm_data==True:
-        axs.plot(df["RT"],df["norm_intensity"],c="k",linewidth=1)
+        axs.plot(df["RT"],df["norm_intensity"],c="darkviolet",linewidth=1)
         ylabel="Normalized Spot-Intensity [a.u.]"
 
     axs.set(
-        title="Bioactivity-Chromatogram",
         ylabel=ylabel,
-        xlabel="Time [s]",
+        xlabel="Retention Time [s]",
         xlim=[df["RT"].min(),df["RT"].max()]
         )
     
@@ -188,12 +187,12 @@ def plot_activity_chromatogram(figure,axs,spot_df,peak_df,baseline_acceptance:fl
 
     axs.plot(spot_df.RT,spot_df[ydata_name],c="k",linewidth=1)
     axs.set(ylabel=f"{string.capwords(ydata_name.replace('_',' '))} [a.u.]",xlabel="Retention Time [s]")
-    axs.scatter(peak_df.RT,peak_df.max_int,marker="x",c="red")
+    axs.scatter(peak_df.RT,peak_df.max_int,marker="x",c="darkviolet")
     
     axs.hlines([mn_old+3*std_old,mn_old-3*std_old],xmin=spot_df.RT.min(),xmax=spot_df.RT.max(),linewidth=1,colors="gray",ls="--")
     
     for idx in peak_df.index:
-        axs.fill_between(spot_df.RT.loc[peak_df.loc[idx,"start_idx"]:peak_df.loc[idx,"end_idx"]],spot_df.loc[peak_df.loc[idx,"start_idx"]:peak_df.loc[idx,"end_idx"],ydata_name],color="lightblue")
+        axs.fill_between(spot_df.RT.loc[peak_df.loc[idx,"start_idx"]:peak_df.loc[idx,"end_idx"]],spot_df.loc[peak_df.loc[idx,"start_idx"]:peak_df.loc[idx,"end_idx"],ydata_name],color="palegreen")
         axs.text(peak_df.loc[idx,"RT"]*1.01, peak_df.loc[idx,"max_int"]*1.01, f'peak{idx}',c="k",size=7)
     axs.legend(["Chromatogram","Detected Peaks","Baseline-Noise"])
 

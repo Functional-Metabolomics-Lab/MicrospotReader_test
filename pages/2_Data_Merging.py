@@ -44,7 +44,7 @@ with st.sidebar:
     # Displays data that has been saved in the current session in tabular format.
     mst.datainfo()
 
-st.markdown("# Data Merging")
+st.markdown("# Data Preparation")
 
 # Selection between custom file upload or selection from saved data in the current session
 choose_input=st.selectbox(
@@ -57,7 +57,7 @@ if choose_input=="Use Selection in current Session":
     # Loading all selected spot-lists into a list
     data_list=[st.session_state["img_data"][data_id] for _,data_id in st.session_state["img_df"].loc[st.session_state["img_df"]["Select"]==True,"id"].items()]
 
-    # If the List contains data, enable Merge Data button and display the names of the spotlists.
+    # If the List contains data, enable Start Data Preparation button and display the names of the spotlists.
     if len(data_list)>0: 
         st.session_state["mergedata_loaded"]=False
         
@@ -68,7 +68,7 @@ if choose_input=="Use Selection in current Session":
             hide_index=True
         )
     
-    # Disable "Merge Data" button if list does not contain data
+    # Disable "Start Data Preparation" button if list does not contain data
     else:
         st.session_state["mergedata_loaded"]=True
 
@@ -85,73 +85,61 @@ elif choose_input=="Upload Data":
     # convert .csv files to lists of spots and store in a list
     data_list=[msu.spot.df_to_list(pd.read_csv(item)) for item in upload_list]
 
-    # Enable "Merge Data" Button if list contains data
+    # Enable "Start Data Preparation" Button if list contains data
     if len(data_list)>0:
         st.session_state["mergedata_loaded"]=False
     
-    # Disable "Merge Data" Button if list is empty
+    # Disable "Start Data Preparation" Button if list is empty
     else:
         st.session_state["mergedata_loaded"]=True
 
-c1,c2=st.columns(2)
 
-# Settings for Data Merging
-
-with c1:
-    # Toggle the annotation of all spots with a retention time
-    st.toggle(
-        "Add Retention-Time",
-        key="addRT",
-        on_change=mst.reset_merge
-    )
-    # Toggle serpentine sorting, if enabled spots are sorted in a serpentine pattern
-    st.toggle(
-        "Serpentine Path",
-        key="serpentine",
-        on_change=mst.reset_merge,
-        disabled=not st.session_state["addRT"]
-    )
-    # Input for the retention time at which spotting was started
-    t_0=st.number_input(
-        "Start Time [s]",
-        value=0,
-        disabled=not st.session_state["addRT"],
-        on_change=mst.reset_merge
-    )
-    # Button starting the data merging process.
-    st.button(
-        "Merge Data",
-        disabled=st.session_state["mergedata_loaded"],
-        type="primary",
-        on_click=mst.merge_settings
-    )
-
-with c2:
-    # Toggle the use of normalized data
-    st.selectbox(
-            "Column containing activity data:",
-            ["norm_intensity","spot_intensity"],
-            index=0,
-            key="toggleNorm"
+# Settings for Data Preparation
+with st.form("Data Preparation Settings"):
+    
+    c1,c2=st.columns(2)
+    
+    with c1:
+        # Toggle the use of normalized data
+        st.selectbox(
+                "Column containing activity data:",
+                ["norm_intensity","spot_intensity"],
+                index=0,
+                key="toggleNorm"
+            )
+        # Toggle to ignore spots of type "control" when adding the retention time. Set this to true if a row or column is used as control that was not spotted using the microspotter set-up.
+        st.toggle(
+            "Ignore controls when adding RT",
+            value=True, 
+            key="ignoreCtrl",
         )
-    # Toggle to ignore spots of type "control" when adding the retention time. Set this to true if a row or column is used as control that was not spotted using the microspotter set-up.
-    st.toggle(
-        "Ignore controls when adding RT",
-        value=True, 
-        on_change=mst.reset_merge, 
-        key="ignoreCtrl",
-        disabled=not st.session_state["addRT"]
-    )
-    # Time each spot was eluted to.
-    t_end=st.number_input(
-        "End Time [s]",
-        value=520,
-        disabled=not st.session_state["addRT"],
-        on_change=mst.reset_merge
-    )
+        # Toggle serpentine sorting, if enabled spots are sorted in a serpentine pattern
+        st.toggle(
+            "Serpentine Path",
+            key="serpentine",
+            value=True,
+        )
+        # Button starting the data preparation process.
+        dataprep=st.form_submit_button(
+            "Start Data Preparation",
+            disabled=st.session_state["mergedata_loaded"],
+            type="primary",
+        )
 
-# Initializes the merging process if the "Merge Data" button was pressed
-if st.session_state["merge_state"]==True:
+    with c2:
+        # Input for the retention time at which spotting was started
+        t_0=st.number_input(
+            "Start Time [s]",
+            value=0,
+        )
+        # Time each spot was eluted to.
+        t_end=st.number_input(
+            "End Time [s]",
+            value=520,
+        )
+
+# Initializes the merging process if the "Start Data Preparation" button was pressed
+if dataprep is True:
     # Concatenates all spotlists found in data_list to one list
     merged_spots=[]
     for spotlist in data_list:
@@ -172,7 +160,7 @@ if st.session_state["merge_state"]==True:
     df=msu.spot.create_df(merged_spots)
     
     # Annotation of all spots with a retention time if enabled
-    if st.session_state["addRT"]==True and st.session_state["ignoreCtrl"]==True:
+    if st.session_state["ignoreCtrl"]==True:
         
         df.loc[df["type"]=="Sample","RT"]=np.linspace(
             t_0,
@@ -180,9 +168,9 @@ if st.session_state["merge_state"]==True:
             num=len(df.loc[df["type"]=="Sample"])
         )
     
-    elif st.session_state["addRT"]==True and st.session_state["ignoreCtrl"]==False:
+    elif st.session_state["ignoreCtrl"]==False:
         
-        df["RT"]=np.linspace(
+        df.loc[df["type"] is not None, "RT"]=np.linspace(
             t_0,
             t_end,
             num=len(df)
@@ -200,26 +188,19 @@ if st.session_state["merge_state"]==True:
     # Get the grid-properties of the spotlist (required for heatmap).
     grid_props=msu.conv_gridinfo(first_spot,last_spot,row_conv)
 
-    # Creates a Tab-View of the results
-    if st.session_state["addRT"]==True:
-        # 3 tabs if retention time is enabled
-        t1,t2,t3=st.tabs(["Merged Data Table","Heatmap","Chromatogram"])
-        
-        with t3:
-            # Plot a chromatogramm of spot intensities 
-            fig,ax=plt.subplots()
-            plots.plot_chromatogram(
-                figure=fig,
-                axs=ax,
-                df=df,
-                norm_data=st.session_state["toggleNorm"]=="norm_intensity"
-            )
-            st.pyplot(fig)
-            
-
-    else:
-        # 2 tabs if retention time is disabled
-        t1,t2=st.tabs(["Merged Data Table","Heatmap"])
+    # 3 tabs if retention time is enabled
+    t1,t2,t3=st.tabs(["Merged Data Table","Heatmap","Chromatogram"])
+    
+    with t3:
+        # Plot a chromatogramm of spot intensities 
+        fig,ax=plt.subplots()
+        plots.plot_chromatogram(
+            figure=fig,
+            axs=ax,
+            df=df,
+            norm_data=st.session_state["toggleNorm"]=="norm_intensity"
+        )
+        st.pyplot(fig)
 
     with t1:
         # Display merged table

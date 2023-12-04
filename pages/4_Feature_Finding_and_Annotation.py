@@ -217,7 +217,11 @@ if st.session_state["results"] is not None:
                 df=st.session_state["results"]["xics"][i]
         
                 fig,ax=plt.subplots()
-                ax.plot(df.rt-ft.loc[i,"RT"],df.int)
+                ax.plot(
+                    df.rt-ft.loc[i,"RT"],
+                    df.int,
+                    c="darkviolet"
+                    )
                 
                 ax.set(
                     ylabel="Intensity MS-signal [a.u.]",
@@ -228,7 +232,7 @@ if st.session_state["results"] is not None:
                 ax2.plot(
                     st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[0,"start_idx"]:st.session_state["results"]["activitytable"].loc[0,"end_idx"],"RT"]-st.session_state["results"]["activitytable"].loc[0,"RT"],
                     st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[0,"start_idx"]:st.session_state["results"]["activitytable"].loc[0,"end_idx"],"norm_intensity"],
-                    c="k"
+                    c="lime"
                 )
 
                 ax2.set(
