@@ -26,7 +26,7 @@ with st.sidebar:
         # Adds the data to the current session, storage is explaned in the documentation of the add_mergedata function.            
         with c1:
             add=st.form_submit_button(
-                "Add Merged Data to Session",
+                "Add Prepared Data to Session",
                 type="primary",
                 use_container_width=True,
                 disabled=not st.session_state["merge_state"]
@@ -44,7 +44,7 @@ with st.sidebar:
     # Displays data that has been saved in the current session in tabular format.
     mst.datainfo()
 
-st.markdown("# Data Preparation")
+st.markdown("# Data Merging and Preparation")
 
 # Selection between custom file upload or selection from saved data in the current session
 choose_input=st.selectbox(

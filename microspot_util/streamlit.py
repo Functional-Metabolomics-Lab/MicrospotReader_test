@@ -91,7 +91,7 @@ def datainfo():
         )
 
     # Displays an editable table for the stored merged data
-    st.caption("Merged Data")
+    st.caption("Prepared Data")
     st.session_state["edit_merge"]=st.data_editor(
         st.session_state["merge_df"],
         column_config={
