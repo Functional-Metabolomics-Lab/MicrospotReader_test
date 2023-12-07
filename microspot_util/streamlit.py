@@ -50,7 +50,16 @@ def page_setup():
         page_title="Microspot Reader",
         page_icon="assets/Icon.png",
         initial_sidebar_state="auto",
-        menu_items=None
+        menu_items={
+            "About":"""
+                    - Interested in contributing? Check out our [GitHub personal page](https://github.com/sknesiron).
+                    - For more about our work, visit our [lab's GitHub page](https://github.com/Functional-Metabolomics-Lab).
+                    - Follow us on [Twitter](https://twitter.com/Functional-Metabolomics-Lab) for the latest updates.
+
+                    Made by Simon B. Knoblauch
+                    """,
+            "Report a Bug":"https://github.com/Functional-Metabolomics-Lab/MicrospotReader/issues/new"
+        }
         )
     # Initializes all required session states
     init_sessionstate()
