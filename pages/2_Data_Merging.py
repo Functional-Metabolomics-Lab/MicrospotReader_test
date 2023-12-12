@@ -170,7 +170,7 @@ if dataprep is True:
     
     elif st.session_state["ignoreCtrl"]==False:
         
-        df.loc[df["type"] is not None, "RT"]=np.linspace(
+        df.loc[df["type"] != None, "RT"]=np.linspace(
             t_0,
             t_end,
             num=len(df)
