@@ -191,7 +191,7 @@ if st.session_state["results"] is not None:
 
     with t2:
         threshold=st.number_input(
-            "Threshold for Pearson Correlation Coefficient:",
+            "Correlation Threshold (Pearson Correlation):",
             max_value=1.0,
             min_value=0.0,
             value=0.8
