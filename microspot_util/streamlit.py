@@ -225,11 +225,47 @@ def download_figures(figure_dict:dict,suffix:str="svg") -> None:
                 mime=".zip",
                 file_name="plots_img-analysis.zip",
                 use_container_width=True
-                )
+            )
+
+def download_gnpsmgf(consensus_map:oms.ConsensusMap,mzmlfilename:str,exp:oms.MSExperiment):
+    filtered_map=oms.ConsensusMap(consensus_map)
+    filtered_map.clear(False)
+    for feature in consensus_map:
+        if feature.getPeptideIdentifications():
+            filtered_map.push_back(feature)
+    
+    with tempfile.NamedTemporaryFile() as temp:
+        oms.ConsensusXMLFile().store(temp.name, filtered_map)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            mgf_name=os.path.join(tempdir,"MS2data.mgf")
+            quant_name=os.path.join(tempdir,"FeatureQuantificationTable.txt")
+            mzml_name=os.path.join(tempdir,mzmlfilename)
+            
+            oms.MzMLFile().store(mzml_name, exp)
+
+            oms.GNPSMGFFile().store(
+                oms.String(temp.name),
+                [mzml_name.encode()],
+                oms.String(mgf_name)
+            )
+            oms.GNPSQuantificationFile().store(consensus_map, quant_name)
+            
+            tempzip=temp_zipfile([mzml_name,mgf_name,quant_name])
+
+    with open(tempzip.name,"rb") as zip_download:
+        st.download_button(
+            label=f"Download Files for FBMN",
+            data=io.BytesIO(zip_download.read()),
+            mime=".zip",
+            file_name="fbmn_files.zip",
+            use_container_width=True,
+            type="primary"
+        )
 
 def download_mzml(exp):
     with tempfile.NamedTemporaryFile(suffix=".mzML", delete=False) as mzml_file:
-            oms.MzMLFile().store(mzml_file.name, exp)
+        oms.MzMLFile().store(mzml_file.name, exp)
 
     with open(mzml_file.name,"rb") as mzml_file:
         st.download_button(

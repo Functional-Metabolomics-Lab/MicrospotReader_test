@@ -122,18 +122,36 @@ with st.form("Settings"):
         mzml_string=io.StringIO(mzml_upload.getvalue().decode("utf-8")).read()
         exp=oms.MSExperiment()
         oms.MzMLFile().loadBuffer(mzml_string,exp)
-        
+
         # Feature Detection and creation of a feature table from the mzml file.
-        ft=msu.feature_finding(
+        fm=msu.feature_finding(
             exp=exp,
+            filename=mzml_upload.name,
             mass_error=mass_error,
             noise_threshold=noise_threshold,
             min_fwhm=float(min_fwhm),
             max_fwhm=float(max_fwhm),
         )
 
+        msu.ms2_mapping(
+            exp=exp,
+            fm=fm
+        )
+
+        ft,consensus_map=msu.adduct_detector(
+            fm=fm,
+            adduct_list=[
+                b'H:+:0.4', 
+                b'Na:+:0.2', 
+                b'NH4:+:0.2', 
+                b'H3O1:+:0.1', 
+                b'CH2O2:+:0.1', 
+                b"H-2O-1:0:0.2"
+            ]
+        )
+
         # Generation of xics for all features in ft.
-        xic_dict=msu.xic_generator(
+        xic_dict,specta=msu.xic_generator(
             exp=exp,
             ft=ft
         )
@@ -155,7 +173,7 @@ with st.form("Settings"):
             xic_dict=xic_dict,
             ydata_name=value_col
         )
-        
+
         st.session_state["results"]={
             "featuretable":ft,
             "activitytable":aft,
@@ -163,12 +181,18 @@ with st.form("Settings"):
             "xics":xic_dict,
             "spot_df":merged_data,
             "val_col":value_col,
-            "baselineconv":baseline_conv
+            "baselineconv":baseline_conv,
+            "consensus_map":consensus_map,
+            "mzml_name":mzml_upload.name,
+            "MSExperiment":exp
         }
         
 if st.session_state["results"] is not None:
 
     st.markdown("## Results")
+
+
+    c=st.container()
 
     t1,t2,t3=st.tabs(["Activity peak data",'Significant active features','Complete feature table'])
 
@@ -246,3 +270,11 @@ if st.session_state["results"] is not None:
                 )
                 fig.tight_layout()
                 st.pyplot(fig)
+
+    with c:
+
+        mst.download_gnpsmgf(
+            st.session_state["results"]["consensus_map"],
+            st.session_state["results"]["mzml_name"],
+            st.session_state["results"]["MSExperiment"]
+            )

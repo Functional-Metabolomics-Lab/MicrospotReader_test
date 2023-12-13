@@ -299,7 +299,7 @@ def annotate_mzml(exp:oms.MSExperiment,spot_df:pd.DataFrame,spot_mz:float, inten
     # Save the spectra-list to the MS Experiment
     exp.setSpectra(spec_list)
 
-def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:float=1000.0,min_fwhm=1.0,max_fwhm=60.0):
+def feature_finding(exp:oms.MSExperiment,filename:str,mass_error:float=10.0,noise_threshold:float=1000.0,min_fwhm=1.0,max_fwhm=60.0):
     """
     ## Description
     Implemented feature finding algorithm from pyopenms https://pyopenms.readthedocs.io/en/latest/user_guide/feature_detection.html
@@ -361,6 +361,7 @@ def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:f
     ffm.run(mass_traces_final, fm, feat_chrom)
 
     fm.setUniqueIds()
+    fm.setPrimaryMSRunPath([filename.encode()])
 
     return fm
 
