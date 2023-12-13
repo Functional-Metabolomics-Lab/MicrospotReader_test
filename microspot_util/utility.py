@@ -233,7 +233,7 @@ def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:fl
 
     return aft
 
-def annotate_mzml(exp:oms.MSExperiment(),spot_df:pd.DataFrame(),spot_mz:float, intensity_scalingfactor:float,norm_data:bool=True):
+def annotate_mzml(exp:oms.MSExperiment,spot_df:pd.DataFrame,spot_mz:float, intensity_scalingfactor:float,norm_data:bool=True):
     """
     ## Description
     Sets the value of a specified m/z in an MS1 spectrum at a specific retention time to a scaled and interpolated spot-intensity value based off of a DataFrame containing RT-matched spot intensities.
@@ -300,6 +300,24 @@ def annotate_mzml(exp:oms.MSExperiment(),spot_df:pd.DataFrame(),spot_mz:float, i
     exp.setSpectra(spec_list)
 
 def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:float=1000.0,min_fwhm=1.0,max_fwhm=60.0):
+    """
+    ## Description
+    Implemented feature finding algorithm from pyopenms https://pyopenms.readthedocs.io/en/latest/user_guide/feature_detection.html
+
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |exp|MSExperiment|pyOpenMS MSExperiment class with a loaded mzml file|
+    |mass_error|float|mass error in ppm|
+    |noise_threshold|float|intensity threshold for noise|
+    |min_fwhm|float|Minimum full width at half maximum of features|
+    |max_fwhm|float|Maximum full width at half maximum of features|
+
+    ## Output
+
+    oms.FeatureMap instance containing information on the detected features
+    """
     exp.sortSpectra(True)
 
     mass_traces = []
@@ -343,9 +361,112 @@ def feature_finding(exp:oms.MSExperiment,mass_error:float=10.0,noise_threshold:f
     ffm.run(mass_traces_final, fm, feat_chrom)
 
     fm.setUniqueIds()
-    ft=fm.get_df()
 
-    return ft[["charge","RT","mz","RTstart","RTend","MZstart","MZend","quality","intensity"]]
+    return fm
+
+def ms2_mapping(exp:oms.MSExperiment,fm:oms.FeatureMap):
+    """
+    ## Description
+    Implemented algorithm for mapping ms2 data to features from pyopenms https://pyopenms.readthedocs.io/en/latest/user_guide/untargeted_metabolomics_preprocessing.html
+
+    Maps the ms2 data to features in the featuremap
+
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |exp|MSExperiment|pyOpenMS MSExperiment class with a loaded mzml file|
+    |fm|oms.FeatureMap|Featuremap instance from feature finding|
+    """
+
+    use_centroid_rt = False
+    use_centroid_mz = True
+    mapper = oms.IDMapper()
+    peptide_ids = []
+    protein_ids = []
+
+    mapper.annotate(
+        fm,
+        peptide_ids,
+        protein_ids,
+        use_centroid_rt,
+        use_centroid_mz,
+        exp,
+    )
+
+def adduct_detector(fm:oms.FeatureMap,adduct_list:list[str]=[b'H:+:0.4', b'Na:+:0.2', b'NH4:+:0.2', b'H3O1:+:0.1', b'CH2O2:+:0.1',b"H-2O-1:0:0.2"]):
+    """
+    ## Description
+    Implemented algorithm adduct detection from pyopenms https://pyopenms.readthedocs.io/en/latest/user_guide/adduct_detection.html
+
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |fm|oms.FeatureMap|Featuremap instance from feature finding|
+    |adduct_list|list of strings|list of strings containing all expected adducts, rules for the list can be found on the linked website|
+
+    ## Output
+    ft -> pd.Dataframe feature table containing information on all features
+    groups -> result consensus map: will store grouped features belonging to a charge group, used to save an mgf file
+    """
+    
+    # initialize MetaboliteFeatureDeconvolution
+    mfd = oms.MetaboliteFeatureDeconvolution()
+
+    # get default parameters
+    params = mfd.getDefaults()
+    # update/explain most important parameters
+
+    # adducts to expect: elements, charge and probability separated by colon
+    # the total probability of all charged adducts needs to be 1
+    # e.g. positive mode:
+    # proton dduct "H:+:0.6", sodium adduct "Na:+:0.4" and neutral water loss "H-2O-1:0:0.2"
+    # e.g. negative mode:
+    # with neutral formic acid adduct: "H-1:-:1", "CH2O2:0:0.5"
+    # multiples don't need to be specified separately:
+    # e.g. [M+H2]2+ and double water loss will be detected as well!
+    # optionally, retention time shifts caused by adducts can be added
+    # e.g. a formic acid adduct causes 3 seconds earlier elution "CH2O2:0:0.5:-3"
+    params.setValue(
+        "potential_adducts", 
+        adduct_list
+    )
+
+    # expected charge range
+    # e.g. for positive mode metabolomics:
+    # minimum of 1, maximum of 3, maximum charge span for a single feature 3
+    # for negative mode:
+    # charge_min = -3, charge_max = -1
+    params.setValue("charge_min", 1, "Minimal possible charge")
+    params.setValue("charge_max", 3, "Maximal possible charge")
+    params.setValue("charge_span_max", 3)
+
+    # maximum RT difference between any two features for grouping
+    # maximum RT difference between between two co-features, after adduct shifts have been accounted for
+    # (if you do not have any adduct shifts, this value should be equal to "retention_max_diff")
+    params.setValue("retention_max_diff", 3.0)
+    params.setValue("retention_max_diff_local", 3.0)
+
+    # set updated paramters object
+    mfd.setParameters(params)
+
+    # result feature map: will store features with adduct information
+    feature_map_MFD = oms.FeatureMap()
+    # result consensus map: will store grouped features belonging to a charge group
+    groups = oms.ConsensusMap()
+    # result consensus map: will store paired features connected by an edge
+    edges = oms.ConsensusMap()
+
+    # compute adducts
+    mfd.compute(fm, feature_map_MFD, groups, edges)
+
+    # export feature map as pandas DataFrame and append adduct information
+    ft = feature_map_MFD.get_df(export_peptide_identifications=False)
+    ft["adduct"] = [f.getMetaValue("dc_charge_adducts") for f in feature_map_MFD]
+
+    return ft, groups
+
 
 def xic_generator(exp:oms.MSExperiment, ft:pd.DataFrame):
     """
@@ -381,7 +502,7 @@ def xic_generator(exp:oms.MSExperiment, ft:pd.DataFrame):
 
         xics[i]=pd.DataFrame({"rt":rtlist,"int":intsum_list})
     
-    return xics
+    return xics,specs
 
 def extract_xic_peakwindow(xic_dict:dict,ft:pd.DataFrame,window:float):
     """
