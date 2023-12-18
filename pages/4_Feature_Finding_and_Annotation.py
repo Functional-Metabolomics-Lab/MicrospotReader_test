@@ -84,11 +84,13 @@ with st.form("Settings"):
             value=1
         )
 
-        baseline_conv=st.number_input(
-            "Convergence criteria for baseline determination:",
-            value=0.02,
-            format="%f"
+        threshold_method=st.selectbox(
+            "Method for peak-threshold determination:",
+            ["Automatic","Manual"],
+            index=0
         )
+
+        st.markdown("####")
 
         # Initiaize analysis:
         analysis=st.form_submit_button(
@@ -114,12 +116,17 @@ with st.form("Settings"):
             value=4
         )
 
+        baseline_conv=st.number_input(
+            "Peak-Threshold criteria:",
+            value=0.02,
+            format="%f"
+        )
+
         value_col=st.selectbox(
             "Column containing activity data:",
             ["norm_intensity","spot_intensity"],
             index=0
         )
-
 
     # Initiate the Annotation if everything has been selected
     if analysis:
@@ -170,9 +177,21 @@ with st.form("Settings"):
         #     datacolumn_name=value_col,
         # )
 
-        merged_data,aft=msu.img_peak_detection(
+        if threshold_method == "Manual":
+            pk_threshold=baseline_conv
+        
+        else:
+            stdev,mn=msu.baseline_noise(
+                merged_data[value_col],
+                baseline_conv
+            )
+
+            pk_threshold=mn+3*stdev
+
+        merged_data,aft,pk=msu.img_peak_detection(
             df=merged_data,
-            datacolumn_name=value_col
+            datacolumn_name=value_col,
+            threshold=pk_threshold
         )
 
         msu.activity_annotation_features(
@@ -192,10 +211,11 @@ with st.form("Settings"):
             "xics":xic_dict,
             "spot_df":merged_data,
             "val_col":"smoothed_int",
-            "baselineconv":baseline_conv,
+            "baselineconv":pk_threshold,
             "consensus_map":consensus_map,
             "mzml_name":mzml_upload.name,
-            "MSExperiment":exp
+            "MSExperiment":exp,
+            "peaks":pk
         }
         
 if st.session_state["results"] is not None:
@@ -219,8 +239,27 @@ if st.session_state["results"] is not None:
             spot_df=st.session_state["results"]["spot_df"],
             peak_df=st.session_state["results"]["activitytable"],
             ydata_name=st.session_state["results"]["val_col"],
-            baseline_acceptance=st.session_state["results"]["baselineconv"]
+            peak_threshold=st.session_state["results"]["baselineconv"]
         )
+        st.pyplot(fig)
+
+        fig,ax=plt.subplots()
+        heatmap=st.session_state["results"]["spot_df"].pivot_table(
+            values="smoothed_int",
+            index="row",
+            columns="column",
+        )
+        htmp=ax.imshow(heatmap)
+        ax.axis("off")
+        ax.scatter(
+            st.session_state["results"]["peaks"][:,1],
+            st.session_state["results"]["peaks"][:,0],
+            c="r",
+            marker="x",
+            label="Detected Peaks"
+        )
+        fig.colorbar(htmp,shrink=0.7,label="Normalized Spot-Intensities",orientation="horizontal",location="top")
+        
         st.pyplot(fig)
 
     with t2:

@@ -255,7 +255,7 @@ def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:fl
 
     return aft
 
-def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="norm_intensity"):
+def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="norm_intensity",threshold:float=0.0):
     """
     ## Description
     Finds peaks and calculates the AUC in a spot-DataFrame
@@ -275,7 +275,7 @@ def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="norm_intensity"):
     
     # do 1d gaussian smoothing. not 2d because you dont want to effect neighbouring rows.
     img[:]=ndimage.gaussian_filter1d(img,1)
-
+    
     # merge the smoothed spot intensities into the main dataframe
     melt_img=pd.melt(img,value_name="smoothed_int",ignore_index=False)
     df=pd.merge(df,melt_img.reset_index(),on=["row_name","column"])
@@ -284,7 +284,8 @@ def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="norm_intensity"):
     peaks=skimage.feature.peak_local_max(
         image=img.to_numpy(),
         min_distance=1,
-        exclude_border=False
+        exclude_border=False,
+        threshold_abs=threshold
     )
 
     # get the main df indexes of all minimas to figure out peak width
@@ -317,7 +318,7 @@ def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="norm_intensity"):
     for idx in aft.index:
         aft.loc[idx,"AUC"]=np.trapz(df.loc[aft.loc[idx,"start_idx"]:aft.loc[idx,"end_idx"],datacolumn_name])
 
-    return df,aft
+    return df,aft,peaks
 
 def annotate_mzml(exp:oms.MSExperiment,spot_df:pd.DataFrame,spot_mz:float, intensity_scalingfactor:float,norm_data:bool=True):
     """
