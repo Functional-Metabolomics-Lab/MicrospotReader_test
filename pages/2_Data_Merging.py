@@ -5,6 +5,11 @@ import microspot_util.plots as plots
 import microspot_util.streamlit as mst
 import microspot_util as msu
 import numpy as np
+import scipy.signal as signal
+
+# Dictionaries to convert Row-Letters into Row-Numbers and vice versa (required for heatmap)
+row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}
+row_conv_inv={v:k for k,v in row_conv.items()}
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()
@@ -130,16 +135,17 @@ with st.form("Data Preparation Settings"):
         # Input for the retention time at which spotting was started
         t_0=st.number_input(
             "Start Time [s]",
-            value=0,
+            value=0.0,
         )
         # Time each spot was eluted to.
         t_end=st.number_input(
             "End Time [s]",
-            value=520,
+            value=520.0,
         )
 
 # Initializes the merging process if the "Start Data Preparation" button was pressed
 if dataprep is True:
+    st.session_state["merge_state"]=True
     # Concatenates all spotlists found in data_list to one list
     merged_spots=[]
     for spotlist in data_list:
@@ -175,19 +181,39 @@ if dataprep is True:
             t_end,
             num=len(df)
         )
+    df=df.loc[df["RT"]>0].reset_index().copy()
+    
+    # baseline,level,df[st.session_state["toggleNorm"]]=msu.baseline_correction(
+    #     array=df[st.session_state["toggleNorm"]],
+    #     conv_lvl=0.001,
+    #     conv_noise=0.00001,
+    #     window_lvl=100,
+    #     window_noise=5,
+    #     poly_lvl=2,
+    #     poly_noise=3
+    # )
 
-    baseline,df.norm_intensity=msu.baseline_correction(df[st.session_state["toggleNorm"]])
+    baseline,df[st.session_state["toggleNorm"]]=msu.baseline_correction2(
+        array=df[st.session_state["toggleNorm"]],
+        conv_lvl=0.001,
+        window_lvl=100,
+        poly_lvl=1,
+    )
 
     # stores current data in a session state
     st.session_state["current_merge"]=df
 
-    # Dictionaries to convert Row-Letters into Row-Numbers and vice versa (required for heatmap)
-    row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}
-    row_conv_inv={v:k for k,v in row_conv.items()}
-
     # Get the grid-properties of the spotlist (required for heatmap).
     grid_props=msu.conv_gridinfo(first_spot,last_spot,row_conv)
 
+    st.session_state["merge_results"]={
+        "df":df,
+        "grid":grid_props
+    }
+
+    st.session_state["merge_state"]=True
+
+if st.session_state["merge_state"] is True:
     # 3 tabs if retention time is enabled
     t1,t2,t3=st.tabs(["Merged Data Table","Heatmap","Chromatogram"])
     
@@ -197,14 +223,14 @@ if dataprep is True:
         plots.plot_chromatogram(
             figure=fig,
             axs=ax,
-            df=df,
+            df=st.session_state["merge_results"]["df"],
             norm_data=st.session_state["toggleNorm"]=="norm_intensity"
         )
         st.pyplot(fig)
 
     with t1:
         # Display merged table
-        st.dataframe(df)
+        st.dataframe(st.session_state["merge_results"]["df"])
         
     with t2:
         # display heatmap of merged data
@@ -212,15 +238,15 @@ if dataprep is True:
         plots.plot_heatmapv2(
             figure=fig,
             axs=ax,
-            df=df,
+            df=st.session_state["merge_results"]["df"],
             conv_dict=row_conv_inv,
             norm_data=st.session_state["toggleNorm"]=="norm_intensity",
-            halo=any(df.halo>0)
+            halo=any(st.session_state["merge_results"]["df"].halo>0)
         )
         st.pyplot(fig)
 
     # Download data
-    table=mst.convert_df(df)
+    table=mst.convert_df(st.session_state["merge_results"]["df"])
     st.download_button(
         label="Download Merged Data as .csv",
         data=table,

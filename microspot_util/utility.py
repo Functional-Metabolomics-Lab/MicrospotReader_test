@@ -104,26 +104,21 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
     
     return gray_img
 
-def baseline_correction2(array,conv_noise=0.0001,window_noise=5,poly_noise=3):
-    baseline_noise=array.copy()
-    rmsd_noise=10
-    while rmsd_noise>conv_noise:
-        sg_filt=signal.savgol_filter(baseline_noise,window_noise,poly_noise)
-        # baseline_new=np.maximum(np.minimum(test,baseline_noise),baseline_level)
-        baseline_new=np.minimum(sg_filt,baseline_noise)        
-        # baseline_new=[]
-        # for n,l in zip(baseline,baseline_level):
-        #     if np.abs(n-l)>10*baseline_level.std():
-        #         baseline_new.append(l)
-        #     else:
-        #         baseline_new.append(n)
-        # baseline_new=np.array(baseline_new)
+def baseline_correction2(array,conv_lvl=0.001,window_lvl=100,poly_lvl=2):
+    baseline_level=array.copy()
+    
+    if len(baseline_level)<window_lvl:
+        window_lvl=len(baseline_level)
 
-        rmsd_noise=np.sqrt(np.mean((baseline_new-baseline_noise)**2))
-        baseline_noise=baseline_new
+    # First time running the algo with a large window size to simply detect the general level of the baseline.
+    rmsd_lvl=10
+    while rmsd_lvl>conv_lvl:
+        sg_filt=signal.savgol_filter(baseline_level,window_lvl,poly_lvl)
+        baseline_new=np.minimum(sg_filt,baseline_level)
+        rmsd_lvl=np.sqrt(np.mean((baseline_new-baseline_level)**2))
+        baseline_level=baseline_new
 
-    corr_ints=array-baseline_noise
-    return baseline_noise,corr_ints
+    return baseline_level, array-baseline_level
     
 def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,window_lvl:int=100,window_noise:int=5,poly_lvl:int=2,poly_noise:int=3):
     """
