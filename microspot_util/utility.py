@@ -104,6 +104,27 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
     
     return gray_img
 
+def baseline_correction2(array,conv_noise=0.0001,window_noise=5,poly_noise=3):
+    baseline_noise=array.copy()
+    rmsd_noise=10
+    while rmsd_noise>conv_noise:
+        sg_filt=signal.savgol_filter(baseline_noise,window_noise,poly_noise)
+        # baseline_new=np.maximum(np.minimum(test,baseline_noise),baseline_level)
+        baseline_new=np.minimum(sg_filt,baseline_noise)        
+        # baseline_new=[]
+        # for n,l in zip(baseline,baseline_level):
+        #     if np.abs(n-l)>10*baseline_level.std():
+        #         baseline_new.append(l)
+        #     else:
+        #         baseline_new.append(n)
+        # baseline_new=np.array(baseline_new)
+
+        rmsd_noise=np.sqrt(np.mean((baseline_new-baseline_noise)**2))
+        baseline_noise=baseline_new
+
+    corr_ints=array-baseline_noise
+    return baseline_noise,corr_ints
+    
 def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,window_lvl:int=100,window_noise:int=5,poly_lvl:int=2,poly_noise:int=3):
     """
     ## Description
@@ -130,6 +151,9 @@ def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,windo
 
     baseline_noise=array.copy()
     baseline_level=array.copy()
+    
+    if len(baseline_level)<window_lvl:
+        window_lvl=len(baseline_level)
 
     # First time running the algo with a large window size to simply detect the general level of the baseline.
     rmsd_lvl=10
@@ -158,7 +182,7 @@ def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,windo
         baseline_noise=baseline_new
 
     corr_ints=array-baseline_noise
-    return baseline_noise,corr_ints
+    return baseline_noise,baseline_level,corr_ints
 
 def baseline_noise(array:pd.Series, convergence_criteria:float=0.02):
     """
@@ -210,8 +234,10 @@ def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:fl
     Dataframe containing information on peaks found in the spot-dataframe
     """
     bl_std,bl_mn=baseline_noise(df[datacolumn_name],baseline_convergence)
-    
-    peaks,_=signal.find_peaks(df[datacolumn_name],height=bl_mn+3*bl_std,distance=min_dist)
+
+    min_height=bl_mn+3*bl_std
+
+    peaks,_=signal.find_peaks(df[datacolumn_name],height=min_height,distance=min_dist,width=2)
 
     _,_,left_ips,right_ips=signal.peak_widths(df[datacolumn_name],peaks,rel_height=rel_height)
 
@@ -232,6 +258,8 @@ def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:fl
         aft.loc[idx,"AUC"]=np.trapz(df.loc[aft.loc[idx,"start_idx"]:aft.loc[idx,"end_idx"],datacolumn_name])
 
     return aft
+
+# def img_peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,)
 
 def annotate_mzml(exp:oms.MSExperiment,spot_df:pd.DataFrame,spot_mz:float, intensity_scalingfactor:float,norm_data:bool=True):
     """
@@ -468,7 +496,6 @@ def adduct_detector(fm:oms.FeatureMap,adduct_list:list[str]=[b'H:+:0.4', b'Na:+:
 
     return ft, groups
 
-
 def xic_generator(exp:oms.MSExperiment, ft:pd.DataFrame):
     """
     ## Description
@@ -496,10 +523,10 @@ def xic_generator(exp:oms.MSExperiment, ft:pd.DataFrame):
 
         for rt,pk in specs.items():
 
-            if rt >= ft.loc[i,"RTstart"] and rt <= ft.loc[i,"RTend"]:
+            # if rt >= ft.loc[i,"RTstart"] and rt <= ft.loc[i,"RTend"]:
 
-                intsum_list.append(pk["int"][(ft.loc[i,"MZstart"]<=pk["mz"]) & (ft.loc[i,"MZend"]>=pk["mz"])].sum())
-                rtlist.append(rt)
+            intsum_list.append(pk["int"][(ft.loc[i,"MZstart"]<=pk["mz"]) & (ft.loc[i,"MZend"]>=pk["mz"])].sum())
+            rtlist.append(rt)
 
         xics[i]=pd.DataFrame({"rt":rtlist,"int":intsum_list})
     
@@ -586,7 +613,7 @@ def peakshape_corr(xic_dict:dict,ft:pd.DataFrame,ap_df:pd.DataFrame,act_df:pd.Da
     
     peak_pearsoncorr(cutxic,ft,cutap,pk,idx,ydata_name)
 
-def activity_annotation_features(ft:pd.DataFrame,aft:pd.DataFrame,act_df:pd.DataFrame,xic_dict:dict,rt_tolerance:float,ydata_name:str="norm_intensity"):
+def activity_annotation_features(ft:pd.DataFrame,aft:pd.DataFrame,act_df:pd.DataFrame,xic_dict:dict,rt_tolerance:float,rt_offset:float,ydata_name:str="norm_intensity"):
     """
     ## Description
 
@@ -601,10 +628,12 @@ def activity_annotation_features(ft:pd.DataFrame,aft:pd.DataFrame,act_df:pd.Data
     |act_df|DataFrame|Dataframe resulting from the data merging step of the microspot reader workflow|
     |xic_dict|dict|Dictionary containing the xics of all features|
     |rt_tolerance|float|tolerance of rt in seconds within which features will be correlated|
+    |rt_offset|float|Offset of the activity chromatogram to the |
     |ydata_name|str|Name of the Column in act_df containing the y-axis information of the activity chromatogram|
     """
     for iat in aft.index:
-        ft.loc[rt_tolerance>=np.abs(ft["RT"]-aft.loc[iat,"RT"]),f"corr_activity_peak{iat}"]=aft.loc[iat,"AUC"]
+        ft.loc[rt_tolerance>=np.abs(ft["RT"]-(aft.loc[iat,"RT"]+rt_offset)),f"corr_activity_peak{iat}"]=aft.loc[iat,"AUC"]
+        ft[f"pearson_corr_peak{iat}"]=None
 
         peakshape_corr(xic_dict,ft,aft,act_df,iat,ydata_name)
 
@@ -1340,7 +1369,7 @@ class halo:
     
     @staticmethod
     @st.cache_data
-    def detect(img,min_rad:int=40,max_rad:int=100,min_xdist:int=70,min_ydist:int=70,thresh:float=0.2,min_obj_size:int=800):
+    def detect(img,min_rad:int=40,max_rad:int=100,min_xdist:int=70,min_ydist:int=70,thresh:float=0.2,min_obj_size:int=800,troubleshoot:bool=False,dil_disk:int=3):
         """
         ## Description
 
@@ -1379,7 +1408,7 @@ class halo:
         # Generate a Skeleton of the binary reconstruction to get a single circle for each halo
         skel=skimage.morphology.skeletonize(bin_recon)
         # Dilate the skeleton to have some tolerance for circle detection
-        skel=skimage.morphology.binary_dilation(skel,skimage.morphology.disk(3))
+        skel=skimage.morphology.binary_dilation(skel,skimage.morphology.disk(dil_disk))
 
         test_radii=np.arange(min_rad,max_rad+1)
         # Circle detection by hough transform.
@@ -1390,7 +1419,11 @@ class halo:
                                                                     threshold=thresh*halo_hough.max())
 
         halo_list=[halo(x,y,rad) for x,y,rad in zip(cx,cy,radii)]
-        return halo_list
+        
+        if troubleshoot is True:
+            return halo_list, recon, bin_recon, skel, halo_hough
+        else:
+            return halo_list
 
     @staticmethod
     def create_df(halo_list:list) -> pd.DataFrame:

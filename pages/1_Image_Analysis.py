@@ -5,6 +5,7 @@ from pathlib import Path
 import microspot_util as msu
 import microspot_util.streamlit as mst
 import microspot_util.plots as plots
+import skimage
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()
@@ -46,41 +47,44 @@ st.markdown("# Image Analysis")
 row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}
 row_conv_inv={v:k for k,v in row_conv.items()}
 
-# If anaylsis has not been initialized, shows image preparation steps.
-if st.session_state["analyze"] is False:
-    # Selection between custom image upload or an example.
-    choose_input=st.selectbox("File upload:",["Upload Image","Example for Testing"])
 
-    # Example image
-    if choose_input=="Example for Testing":
-        inputfile=Path(r"test_images/standard_mix.tif")
+# Selection between custom image upload or an example.
+choose_input=st.selectbox("File upload:",["Upload Image","Example for Testing"],on_change=mst.set_analyze_False)
 
-    # File uploader for custom image files
-    else:
-        inputfile=st.file_uploader("Upload Microspot Image",["png","jpg","tif"])
+# Example image
+if choose_input=="Example for Testing":
+    inputfile=Path(r"test_images/standard_mix.tif")
+
+# File uploader for custom image files
+else:
+    inputfile=st.file_uploader("Upload Microspot Image",["png","jpg","tif"],on_change=mst.set_analyze_False)
+
+# after the inputfile was uploaded, show settings menu
+if inputfile:
+    st.markdown("## Image to be analyzed")
     
-    # after the inputfile was uploaded, show settings menu
-    if inputfile:
-        st.markdown("## Image to be analyzed")
+    img_container=st.container()
+
+    col1,col2=st.columns(2)
+    
+    # Displays the available Settings
+    with col1:
+        st.markdown("⚙️ ***Settings***")
+
+        # Set the indexing for the first spot: Required for the calculation of grid parameters.
+        first_spot=st.text_input("Index of First Spot",placeholder="A1",on_change=mst.set_analyze_False)
+    
+    with col2:
+        # Toggle the inversion of the grayscale image.
+        invert=st.toggle("Invert grayscale Image",value=True,on_change=mst.set_analyze_False)
+
+        # Set the indexing for the last spot: Required for the calculation of grid parameters.
+        last_spot=st.text_input("Index of Last Spot",placeholder="L20",on_change=mst.set_analyze_False)
+    
+    with st.form("Settings", border=False): 
         
-        img_container=st.container()
-
-        col1,col2=st.columns(2)
-        
-        # Displays the available Settings
-        with col1:
-            st.markdown("⚙️ ***Settings***")
-
-            # Set the indexing for the first spot: Required for the calculation of grid parameters.
-            first_spot=st.text_input("Index of First Spot",placeholder="A1")
-        
-        with col2:
-            # Toggle the inversion of the grayscale image.
-            invert=st.toggle("Invert grayscale Image",value=True)
-
-            # Set the indexing for the last spot: Required for the calculation of grid parameters.
-            last_spot=st.text_input("Index of Last Spot",placeholder="P20")
-
+        col1, col2 = st.columns(2)
+    
         # Enables start analysis button if all required settings are set and calculates grid information.
         if first_spot and last_spot:
             st.session_state["init_analysis"]=False
@@ -196,7 +200,6 @@ if st.session_state["analyze"] is False:
                     value=40,
                     step=1,
                     min_value=1,
-                    disabled=not st.session_state["halo_toggle"]
                     )
 
                 st.session_state["adv_settings"]["halo_det"]["x_dist"]=st.number_input(
@@ -204,7 +207,6 @@ if st.session_state["analyze"] is False:
                     value=70,
                     step=1,
                     min_value=0,
-                    disabled=not st.session_state["halo_toggle"]
                     )
                 
                 st.session_state["adv_settings"]["halo_det"]["tog_scale"]=st.selectbox(
@@ -218,7 +220,6 @@ if st.session_state["analyze"] is False:
                     value=100,
                     step=1,
                     min_value=1,
-                    disabled=not st.session_state["halo_toggle"]
                     )
                 
                 st.session_state["adv_settings"]["halo_det"]["y_dist"]=st.number_input(
@@ -226,14 +227,12 @@ if st.session_state["analyze"] is False:
                     value=70,
                     step=1,
                     min_value=0,
-                    disabled=not st.session_state["halo_toggle"]
                     )
                 
                 st.session_state["adv_settings"]["halo_det"]["scaling"]=st.number_input(
                     "Scaling Factor:",
-                    value=30.0,
+                    value=25.0,
                     min_value=0.0,
-                    disabled=not st.session_state["halo_toggle"]
                     )
 
         # Expander containing advanced settings unlikely to be changed by user.
@@ -253,20 +252,23 @@ if st.session_state["analyze"] is False:
                 st.session_state["adv_settings"]["init_det"]["low_edge"]=st.number_input(
                     "Edge-detection low threshold:",
                     value=0.001,
-                    min_value=0.0
+                    min_value=0.000000,
+                    format="%f"
                     )
 
             with c2:
                 st.session_state["adv_settings"]["init_det"]["thresh"]=st.number_input(
                     "Spot-detection threshold:",
                     value=0.3,
-                    min_value=0.0
+                    min_value=0.0,
+                    format="%f"
                     )
                 
                 st.session_state["adv_settings"]["init_det"]["high_edge"]=st.number_input(
                     "Edge-detection high threshold:",
                     value=0.001,
-                    min_value=0.0
+                    min_value=0.000000,
+                    format="%f"
                     )
 
             st.divider()
@@ -292,6 +294,11 @@ if st.session_state["analyze"] is False:
 
             st.markdown("__Spot Correction and Intensity Evaluation__")
 
+            st.session_state["adv_settings"]["spot_misc"]["invert_int"]=st.toggle(
+                "Invert image for calculation of intensity",
+                value=False
+            )
+
             st.session_state["adv_settings"]["spot_misc"]["int_rad"]=st.number_input(
                 "Disk-Radius for spot-intensity calculation *[in pixels]*:",
                 value=0,
@@ -308,8 +315,12 @@ if st.session_state["analyze"] is False:
                     "Halo-detection threshold:",
                     value=0.2,
                     min_value=0.0,
-                    disabled=not st.session_state["halo_toggle"]
                     )
+                
+                st.session_state["adv_settings"]["halo_det"]["disk"]=st.number_input(
+                    "Disk radius for morphological dilation *[in pixels]*:",
+                    value=3,
+                )
 
             with c2:
                 st.session_state["adv_settings"]["halo_det"]["min_obj"]=st.number_input(
@@ -317,7 +328,6 @@ if st.session_state["analyze"] is False:
                     value=800,
                     min_value=0,
                     step=1,
-                    disabled=not st.session_state["halo_toggle"]
                     )
             
             # Old halo detection settings:
@@ -342,15 +352,16 @@ if st.session_state["analyze"] is False:
             st.pyplot(fig)
 
         # Start the image processing algorithm. Only activated if all settings have been set
-        st.button("Start Analysis!",type="primary",disabled=st.session_state["init_analysis"],on_click=mst.set_analyze_True, use_container_width=True)
+        if st.form_submit_button("Start Analysis!",type="primary",disabled=st.session_state["init_analysis"], use_container_width=True):
+            st.session_state["analyze"] = True
 
 # Initiates Analysis and displays results if Starts Analysis button has been pressed.
-elif st.session_state["analyze"] is True:
-    
+if st.session_state["analyze"] is True:
+
     st.markdown("## Results")
 
     # Inital spot-detection.
-    init_spots=msu.spot.detect(
+    init_spots,test=msu.spot.detect(
         gray_img=st.session_state["img"],
         spot_nr=st.session_state["grid"]["spot_nr"],
         canny_sig=st.session_state["adv_settings"]["init_det"]["sigma"],
@@ -361,6 +372,7 @@ elif st.session_state["analyze"] is True:
         hough_thresh=st.session_state["adv_settings"]["init_det"]["thresh"],
         small_rad=st.session_state["adv_settings"]["init_det"]["low_rad"],
         large_rad=st.session_state["adv_settings"]["init_det"]["high_rad"],
+        troubleshoot=True
         )
     
     avg_spotradius=np.mean([s.rad for s in init_spots])
@@ -421,6 +433,9 @@ elif st.session_state["analyze"] is True:
         col_start=st.session_state["grid"]["columns"]["bounds"][0]
     )
 
+    if st.session_state["adv_settings"]["spot_misc"]["invert_int"] is True:
+        st.session_state["img"]=skimage.util.invert(st.session_state["img"])
+
     # Calculate the spot intensity and label controls
     for s in sort_spots:
         s.get_intensity(
@@ -450,7 +465,8 @@ elif st.session_state["analyze"] is True:
             thresh=st.session_state["adv_settings"]["halo_det"]["thresh"],
             min_rad=st.session_state["adv_settings"]["halo_det"]["low_rad"],
             max_rad=st.session_state["adv_settings"]["halo_det"]["high_rad"],
-            min_obj_size=st.session_state["adv_settings"]["halo_det"]["min_obj"]
+            min_obj_size=st.session_state["adv_settings"]["halo_det"]["min_obj"],
+            dil_disk=st.session_state["adv_settings"]["halo_det"]["disk"]
         )  
 
         # Assign halos to their spot and add the index of the spot to a list.
@@ -535,8 +551,14 @@ elif st.session_state["analyze"] is True:
                 img=st.session_state["img"],
                 lines=hor_line+vert_line
             )
+            for s in init_spots:
+                ax.scatter(s.x,s.y, c="k", marker="x")
             st.pyplot(fig_grid)
             figuredict["detected_grid"]=fig_grid
+
+            fig,ax=plt.subplots()
+            ax.imshow(test["edge"])
+            st.pyplot(fig)
 
         with col2: 
             st.markdown("## Detected Grid")

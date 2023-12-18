@@ -81,12 +81,21 @@ with st.form("Settings"):
 
         rt_tolerance=st.number_input(
             "Retention Time tolerance *[in s]*",
-            value=5
+            value=1
         )
 
         baseline_conv=st.number_input(
             "Convergence criteria for baseline determination:",
-            value=0.02
+            value=0.02,
+            format="%f"
+        )
+
+        # Initiaize analysis:
+        analysis=st.form_submit_button(
+            "Start Feature Detection and Annotation",
+            disabled=st.session_state["disable_mzml"],
+            type="primary",
+            use_container_width=True
         )
 
     with c2:
@@ -99,6 +108,11 @@ with st.form("Settings"):
             "Max. fwhm of peaks during feature detection *[in s]*:",
             value=60.0
         )
+        
+        rt_offset=st.number_input(
+            "Retention Time offset *[in s]*",
+            value=4
+        )
 
         value_col=st.selectbox(
             "Column containing activity data:",
@@ -106,15 +120,6 @@ with st.form("Settings"):
             index=0
         )
 
-        st.markdown("#### ")
-
-        # Initiaize analysis:
-        analysis=st.form_submit_button(
-            "Start Feature Detection and Annotation",
-            disabled=st.session_state["disable_mzml"],
-            type="primary",
-            use_container_width=True
-        )
 
     # Initiate the Annotation if everything has been selected
     if analysis:
@@ -169,6 +174,7 @@ with st.form("Settings"):
             ft=ft,
             aft=aft,
             rt_tolerance=rt_tolerance,
+            rt_offset=rt_offset,
             act_df=merged_data,
             xic_dict=xic_dict,
             ydata_name=value_col
@@ -190,7 +196,6 @@ with st.form("Settings"):
 if st.session_state["results"] is not None:
 
     st.markdown("## Results")
-
 
     c=st.container()
 
@@ -235,10 +240,13 @@ if st.session_state["results"] is not None:
         )
 
         if dip_featurealignment!="Don't Display":
+            
             ft=st.session_state['results']['ft_peaks'][dip_featurealignment].loc[st.session_state['results']['ft_peaks'][dip_featurealignment][f"pearson_corr_{dip_featurealignment}"]>threshold].sort_values(f"pearson_corr_{dip_featurealignment}",ascending=False)
+
+            peakidx=int(dip_featurealignment.removeprefix("peak"))
             
             for i in ft.index:
-                df=st.session_state["results"]["xics"][i]
+                df=st.session_state["results"]["xics"][i].copy()
         
                 fig,ax=plt.subplots()
                 ax.plot(
@@ -247,20 +255,28 @@ if st.session_state["results"] is not None:
                     c="darkviolet"
                     )
                 
-                ax.set(
-                    ylabel="Intensity MS-signal [a.u.]",
-                    xlabel="ΔRT from Peak-maximum [s]"
+                ax2=ax.twinx()
+
+                activity_rt=st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[peakidx,"start_idx"]:st.session_state["results"]["activitytable"].loc[peakidx,"end_idx"],"RT"]-st.session_state["results"]["activitytable"].loc[peakidx,"RT"]
+
+                activity_int=st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[peakidx,"start_idx"]:st.session_state["results"]["activitytable"].loc[peakidx,"end_idx"],"norm_intensity"]
+                
+                ax2.plot(
+                    activity_rt,
+                    activity_int,
+                    c="lime"
                 )
                 
-                ax2=ax.twinx()
-                ax2.plot(
-                    st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[0,"start_idx"]:st.session_state["results"]["activitytable"].loc[0,"end_idx"],"RT"]-st.session_state["results"]["activitytable"].loc[0,"RT"],
-                    st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[0,"start_idx"]:st.session_state["results"]["activitytable"].loc[0,"end_idx"],"norm_intensity"],
-                    c="lime"
+                ax.set(
+                    ylabel="Intensity MS-signal [a.u.]",
+                    xlabel="ΔRT from Peak-maximum [s]",
+                    xlim=[activity_rt.min()-5,activity_rt.max()+5],
+                    ylim=[0, df.loc[(df.rt>ft.loc[i,"RTstart"]) & (df.rt<ft.loc[i,"RTend"]),"int"].max()]
                 )
 
                 ax2.set(
-                    ylabel="Intensity activity-signal [a.u.]"
+                    ylabel="Intensity activity-signal [a.u.]",
+                    ylim=[0,activity_int.max()]
                 )
                 fig.legend(
                     ["Feature-peak","Activity-peak"],

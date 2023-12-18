@@ -38,6 +38,7 @@ def init_sessionstate():
             "norm":False,               # Keeps track of wheter data has been normalized during image analysis.
             "adv_settings":{"init_det":{},"grid_det":{},"spot_misc":{},"halo_det":{}}, # initializes dictionary containing all values from the advanced settings
             "results":None,             # variable containing results from feature detection and annotation
+            "merge_results":{}
             }
 
     for name,state in states.items():
@@ -192,9 +193,9 @@ def reset_merge():
     # Callback function to reset the merge state
     st.session_state["merge_state"]=False
 
-def set_analyze_True():
+def set_analyze_False():
     # Callback function to set analyze state to true
-    st.session_state["analyze"]=True
+    st.session_state["analyze"]=False
 
 def temp_figurefiles(figure_dict,suffix,directory):
     pathlist=[]
