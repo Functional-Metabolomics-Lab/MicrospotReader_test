@@ -16,6 +16,7 @@ import streamlit as st
 import pyopenms as oms
 import scipy.signal as signal
 import scipy.stats as stats
+import scipy.ndimage as ndimage
 
 @st.cache_data
 def conv_gridinfo(point1:str,point2:str,conv_dict:dict) -> dict:
@@ -254,7 +255,69 @@ def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:fl
 
     return aft
 
-# def img_peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,)
+def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="norm_intensity"):
+    """
+    ## Description
+    Finds peaks and calculates the AUC in a spot-DataFrame
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |df|DataFrame|Spot-Dataframe to detect peaks in|
+    |datacolumn_name|str|name of the df column containing the y data for peak detection|
+    
+    ## Returns
+    Dataframe containing information on peaks found in the spot-dataframe and updated main dataframe
+    """
+    # Create a heatmap from the spot intensities, it is better to do peak detection in 2d instead of on the chromatogram due to artifacts during image capturing.
+    img=df.pivot_table(datacolumn_name,index="row_name",columns="column")
+    
+    # do 1d gaussian smoothing. not 2d because you dont want to effect neighbouring rows.
+    img[:]=ndimage.gaussian_filter1d(img,1)
+
+    # merge the smoothed spot intensities into the main dataframe
+    melt_img=pd.melt(img,value_name="smoothed_int",ignore_index=False)
+    df=pd.merge(df,melt_img.reset_index(),on=["row_name","column"])
+
+    # do 2d peak detection 
+    peaks=skimage.feature.peak_local_max(
+        image=img.to_numpy(),
+        min_distance=1,
+        exclude_border=False
+    )
+
+    # get the main df indexes of all minimas to figure out peak width
+    minima=df.index[signal.argrelmin(df.smoothed_int.to_numpy())]
+
+    # get the main df indexes of all peaks
+    peak_idx=[df.loc[(df["row_name"]==img.index[p[0]])&(df["column"]==img.columns[p[1]])].index.item() for p in peaks]
+
+    # get the left most indexes of all detected peaks
+    left_ips=[minima[minima<i][-1] if any(minima<i) else df.index[0] for i in peak_idx]
+
+    # get the right most indexes of all detected peaks
+    right_ips=[minima[minima>i][0] if any(minima>i) else df.index[-1] for i in peak_idx]
+
+    # save peak data in a new dataframe
+    aft=pd.DataFrame(
+                {
+                "peak_idx":peak_idx,
+                "RT":df.loc[peak_idx,"RT"].values,
+                "start_idx":left_ips,
+                "end_idx":right_ips,
+                "RTstart":df.loc[left_ips,"RT"].values,
+                "RTend":df.loc[right_ips,"RT"].values,
+                "max_int":df.loc[peak_idx,"smoothed_int"].values,
+                "AUC":np.nan
+                }
+            ).rename_axis("peak_nr")
+
+    # calculate the AUC of each peak
+    for idx in aft.index:
+        aft.loc[idx,"AUC"]=np.trapz(df.loc[aft.loc[idx,"start_idx"]:aft.loc[idx,"end_idx"],datacolumn_name])
+
+    return df,aft
 
 def annotate_mzml(exp:oms.MSExperiment,spot_df:pd.DataFrame,spot_mz:float, intensity_scalingfactor:float,norm_data:bool=True):
     """

@@ -193,6 +193,7 @@ def plot_activity_chromatogram(figure,axs,spot_df,peak_df,baseline_acceptance:fl
     
     for idx in peak_df.index:
         axs.fill_between(spot_df.RT.loc[peak_df.loc[idx,"start_idx"]:peak_df.loc[idx,"end_idx"]],spot_df.loc[peak_df.loc[idx,"start_idx"]:peak_df.loc[idx,"end_idx"],ydata_name],color="palegreen")
+        
         axs.text(peak_df.loc[idx,"RT"]*1.01, peak_df.loc[idx,"max_int"]*1.01, f'peak{idx}',c="k",size=7)
     axs.legend(["Chromatogram","Detected Peaks","Baseline-Noise"])
 

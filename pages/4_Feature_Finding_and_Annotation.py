@@ -163,11 +163,16 @@ with st.form("Settings"):
 
         # Peak-detection in the activity chromatogram.
         merged_data.sort_values("RT",inplace=True)
-        aft=msu.peak_detection(
+        # aft=msu.peak_detection(
+        #     df=merged_data,
+        #     baseline_convergence=baseline_conv,
+        #     rel_height=0.95,
+        #     datacolumn_name=value_col,
+        # )
+
+        merged_data,aft=msu.img_peak_detection(
             df=merged_data,
-            baseline_convergence=baseline_conv,
-            rel_height=0.95,
-            datacolumn_name=value_col,
+            datacolumn_name=value_col
         )
 
         msu.activity_annotation_features(
@@ -177,7 +182,7 @@ with st.form("Settings"):
             rt_offset=rt_offset,
             act_df=merged_data,
             xic_dict=xic_dict,
-            ydata_name=value_col
+            ydata_name="smoothed_int"
         )
 
         st.session_state["results"]={
@@ -186,7 +191,7 @@ with st.form("Settings"):
             "ft_peaks":{f"peak{pk}":ft.loc[ft[f"corr_activity_peak{pk}"]>0].copy() for pk in aft.index},
             "xics":xic_dict,
             "spot_df":merged_data,
-            "val_col":value_col,
+            "val_col":"smoothed_int",
             "baselineconv":baseline_conv,
             "consensus_map":consensus_map,
             "mzml_name":mzml_upload.name,
@@ -259,7 +264,7 @@ if st.session_state["results"] is not None:
 
                 activity_rt=st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[peakidx,"start_idx"]:st.session_state["results"]["activitytable"].loc[peakidx,"end_idx"],"RT"]-st.session_state["results"]["activitytable"].loc[peakidx,"RT"]
 
-                activity_int=st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[peakidx,"start_idx"]:st.session_state["results"]["activitytable"].loc[peakidx,"end_idx"],"norm_intensity"]
+                activity_int=st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[peakidx,"start_idx"]:st.session_state["results"]["activitytable"].loc[peakidx,"end_idx"],"smoothed_int"]
                 
                 ax2.plot(
                     activity_rt,
@@ -271,12 +276,12 @@ if st.session_state["results"] is not None:
                     ylabel="Intensity MS-signal [a.u.]",
                     xlabel="ΔRT from Peak-maximum [s]",
                     xlim=[activity_rt.min()-5,activity_rt.max()+5],
-                    ylim=[0, df.loc[(df.rt>ft.loc[i,"RTstart"]) & (df.rt<ft.loc[i,"RTend"]),"int"].max()]
+                    ylim=[df.loc[(df.rt>ft.loc[i,"RTstart"]) & (df.rt<ft.loc[i,"RTend"]),"int"].min(), df.loc[(df.rt>ft.loc[i,"RTstart"]) & (df.rt<ft.loc[i,"RTend"]),"int"].max()]
                 )
 
                 ax2.set(
                     ylabel="Intensity activity-signal [a.u.]",
-                    ylim=[0,activity_int.max()]
+                    ylim=[activity_int.min(),activity_int.max()]
                 )
                 fig.legend(
                     ["Feature-peak","Activity-peak"],
