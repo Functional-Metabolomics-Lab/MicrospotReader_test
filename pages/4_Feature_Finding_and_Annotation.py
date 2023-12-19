@@ -274,14 +274,15 @@ if st.session_state["results"] is not None:
             halo=any(st.session_state["results"]["spot_df"]["halo"]>0)
         )
 
-        # Add information on detected peaks to heatmap
+        # Add location of detected peaks to heatmap
         ax.scatter(
             st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"]["peak_idx"],"column"],
             -st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"]["peak_idx"],"row"],
             c="r",
             marker="D",
         )
-
+        
+        # Write name of peak to corresponding spot
         for i in st.session_state["results"]["activitytable"].index:
             ax.text(
                 st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[i,"peak_idx"],"column"]+0.2,
@@ -291,7 +292,7 @@ if st.session_state["results"] is not None:
                 c="r",
                 path_effects=[pe.withStroke(linewidth=1, foreground="white")]
             )
-        
+        fig.tight_layout()
         st.pyplot(fig)
 
     with t2:

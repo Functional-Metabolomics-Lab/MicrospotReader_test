@@ -290,7 +290,11 @@ def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="smoothed_int",thresh
     )
 
     # get the main df indexes of all minimas to figure out peak width
-    minima=df.index[signal.argrelmin(df[datacolumn_name].to_numpy())]
+    #minima=df.index[signal.argrelmin(df[datacolumn_name].to_numpy())]
+
+    minima,_=signal.find_peaks(-df[datacolumn_name].to_numpy())
+
+    minima=df.index[minima]
 
     # get the main df indexes of all peaks
     peak_idx=[df.loc[(df["row_name"]==img.index[p[0]])&(df["column"]==img.columns[p[1]])].index.item() for p in peaks]
