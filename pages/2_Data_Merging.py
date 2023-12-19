@@ -125,6 +125,9 @@ with st.form("Data Preparation Settings"):
             key="serpentine",
             value=True,
         )
+
+        st.markdown("####")
+
         # Button starting the data preparation process.
         dataprep=st.form_submit_button(
             "Start Data Preparation",
@@ -143,6 +146,11 @@ with st.form("Data Preparation Settings"):
         t_end=st.number_input(
             "End Time [s]",
             value=520.0,
+        )
+
+        sigma_smooth=st.number_input(
+            "Sigma-Value for gaussian smoothing:",
+            value=1
         )
 
 # Initializes the merging process if the "Start Data Preparation" button was pressed
@@ -203,7 +211,7 @@ if dataprep is True:
 
     df["smoothed_int"]=gaussian_filter1d(
         input=df["smoothed_int"].to_numpy(),
-        sigma=1
+        sigma=sigma_smooth
     )
 
     # stores current data in a session state
