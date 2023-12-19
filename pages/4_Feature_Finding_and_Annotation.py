@@ -6,6 +6,11 @@ import microspot_util.streamlit as mst
 import microspot_util.plots as plots
 import io
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
+
+# Dictionaries to convert Row-Letters into Row-Numbers and vice versa (required for heatmap)
+row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}
+row_conv_inv={v:k for k,v in row_conv.items()}
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()
@@ -124,8 +129,8 @@ with st.form("Settings"):
 
         value_col=st.selectbox(
             "Column containing activity data:",
-            ["norm_intensity","spot_intensity"],
-            index=0
+            ["norm_intensity","spot_intensity","smoothed_int"],
+            index=2
         )
 
     # Initiate the Annotation if everything has been selected
@@ -201,7 +206,7 @@ with st.form("Settings"):
             rt_offset=rt_offset,
             act_df=merged_data,
             xic_dict=xic_dict,
-            ydata_name="smoothed_int"
+            ydata_name=value_col
         )
 
         st.session_state["results"]={
@@ -210,7 +215,7 @@ with st.form("Settings"):
             "ft_peaks":{f"peak{pk}":ft.loc[ft[f"corr_activity_peak{pk}"]>0].copy() for pk in aft.index},
             "xics":xic_dict,
             "spot_df":merged_data,
-            "val_col":"smoothed_int",
+            "val_col":value_col,
             "baselineconv":pk_threshold,
             "consensus_map":consensus_map,
             "mzml_name":mzml_upload.name,
@@ -244,21 +249,48 @@ if st.session_state["results"] is not None:
         st.pyplot(fig)
 
         fig,ax=plt.subplots()
-        heatmap=st.session_state["results"]["spot_df"].pivot_table(
-            values="smoothed_int",
-            index="row",
-            columns="column",
+        # heatmap=st.session_state["results"]["spot_df"].pivot_table(
+        #     values="smoothed_int",
+        #     index="row",
+        #     columns="column",
+        # )
+        # htmp=ax.imshow(heatmap)
+        # ax.axis("off")
+        # ax.scatter(
+        #     st.session_state["results"]["peaks"][:,1],
+        #     st.session_state["results"]["peaks"][:,0],
+        #     c="r",
+        #     marker="x",
+        #     label="Detected Peaks"
+        # )
+        # fig.colorbar(htmp,shrink=0.7,label="Normalized Spot-Intensities",orientation="horizontal",location="top")
+        plots.plot_heatmapv2(
+            fig,
+            ax,
+            st.session_state["results"]["spot_df"],
+            row_conv_inv,
+            value_col=st.session_state["results"]["val_col"],
+            colorbar_name="Spot Intensity [a.u.]",
+            halo=any(st.session_state["results"]["spot_df"]["halo"]>0)
         )
-        htmp=ax.imshow(heatmap)
-        ax.axis("off")
+
+        # Add information on detected peaks to heatmap
         ax.scatter(
-            st.session_state["results"]["peaks"][:,1],
-            st.session_state["results"]["peaks"][:,0],
+            st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"]["peak_idx"],"column"],
+            -st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"]["peak_idx"],"row"],
             c="r",
-            marker="x",
-            label="Detected Peaks"
+            marker="D",
         )
-        fig.colorbar(htmp,shrink=0.7,label="Normalized Spot-Intensities",orientation="horizontal",location="top")
+
+        for i in st.session_state["results"]["activitytable"].index:
+            ax.text(
+                st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[i,"peak_idx"],"column"]+0.2,
+                -st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[i,"peak_idx"],"row"]+0.2,
+                f"peak{i}",
+                size=8,
+                c="r",
+                path_effects=[pe.withStroke(linewidth=1, foreground="white")]
+            )
         
         st.pyplot(fig)
 

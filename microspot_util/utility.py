@@ -255,7 +255,7 @@ def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:fl
 
     return aft
 
-def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="norm_intensity",threshold:float=0.0):
+def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="smoothed_int",threshold:float=0.0):
     """
     ## Description
     Finds peaks and calculates the AUC in a spot-DataFrame
@@ -273,12 +273,13 @@ def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="norm_intensity",thre
     # Create a heatmap from the spot intensities, it is better to do peak detection in 2d instead of on the chromatogram due to artifacts during image capturing.
     img=df.pivot_table(datacolumn_name,index="row_name",columns="column")
     
-    # do 1d gaussian smoothing. not 2d because you dont want to effect neighbouring rows.
-    img[:]=ndimage.gaussian_filter1d(img,1)
+    # ****SMOOTHING DONE IN DATA MERGING STEP****
+    # # do 1d gaussian smoothing. not 2d because you dont want to effect neighbouring rows.
+    # img[:]=ndimage.gaussian_filter1d(img,1)
     
-    # merge the smoothed spot intensities into the main dataframe
-    melt_img=pd.melt(img,value_name="smoothed_int",ignore_index=False)
-    df=pd.merge(df,melt_img.reset_index(),on=["row_name","column"])
+    # # merge the smoothed spot intensities into the main dataframe
+    # melt_img=pd.melt(img,value_name="smoothed_int",ignore_index=False)
+    # df=pd.merge(df,melt_img.reset_index(),on=["row_name","column"])
 
     # do 2d peak detection 
     peaks=skimage.feature.peak_local_max(
@@ -289,7 +290,7 @@ def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="norm_intensity",thre
     )
 
     # get the main df indexes of all minimas to figure out peak width
-    minima=df.index[signal.argrelmin(df.smoothed_int.to_numpy())]
+    minima=df.index[signal.argrelmin(df[datacolumn_name].to_numpy())]
 
     # get the main df indexes of all peaks
     peak_idx=[df.loc[(df["row_name"]==img.index[p[0]])&(df["column"]==img.columns[p[1]])].index.item() for p in peaks]
@@ -309,7 +310,7 @@ def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="norm_intensity",thre
                 "end_idx":right_ips,
                 "RTstart":df.loc[left_ips,"RT"].values,
                 "RTend":df.loc[right_ips,"RT"].values,
-                "max_int":df.loc[peak_idx,"smoothed_int"].values,
+                "max_int":df.loc[peak_idx,datacolumn_name].values,
                 "AUC":np.nan
                 }
             ).rename_axis("peak_nr")
