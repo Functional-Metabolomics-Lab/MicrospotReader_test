@@ -6,6 +6,7 @@ import microspot_util.streamlit as mst
 import microspot_util as msu
 import numpy as np
 import scipy.signal as signal
+from scipy.ndimage import gaussian_filter1d
 
 # Dictionaries to convert Row-Letters into Row-Numbers and vice versa (required for heatmap)
 row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}
@@ -129,6 +130,7 @@ with st.form("Data Preparation Settings"):
             "Start Data Preparation",
             disabled=st.session_state["mergedata_loaded"],
             type="primary",
+            on_click=mst.merge_settings
         )
 
     with c2:
@@ -145,7 +147,6 @@ with st.form("Data Preparation Settings"):
 
 # Initializes the merging process if the "Start Data Preparation" button was pressed
 if dataprep is True:
-    st.session_state["merge_state"]=True
     # Concatenates all spotlists found in data_list to one list
     merged_spots=[]
     for spotlist in data_list:
@@ -193,11 +194,16 @@ if dataprep is True:
     #     poly_noise=3
     # )
 
-    baseline,df[st.session_state["toggleNorm"]]=msu.baseline_correction2(
+    baseline,df["smoothed_int"]=msu.baseline_correction2(
         array=df[st.session_state["toggleNorm"]],
         conv_lvl=0.001,
         window_lvl=100,
         poly_lvl=1,
+    )
+
+    df["smoothed_int"]=gaussian_filter1d(
+        input=df["smoothed_int"].to_numpy(),
+        sigma=1
     )
 
     # stores current data in a session state
@@ -230,9 +236,14 @@ if st.session_state["merge_state"] is True:
 
     with t1:
         # Display merged table
-        st.dataframe(st.session_state["merge_results"]["df"])
+        st.dataframe(st.session_state["merge_results"]["df"],hide_index=True)
         
     with t2:
+        if st.session_state["toggleNorm"]=="norm_intensity":
+            cbar_name="Smoothed Normalized Intensity [a.u.]"
+        else:
+            cbar_name="Smoothed Spot Intensity [a.u.]"
+        
         # display heatmap of merged data
         fig,ax=plt.subplots()
         plots.plot_heatmapv2(
@@ -240,7 +251,8 @@ if st.session_state["merge_state"] is True:
             axs=ax,
             df=st.session_state["merge_results"]["df"],
             conv_dict=row_conv_inv,
-            norm_data=st.session_state["toggleNorm"]=="norm_intensity",
+            value_col="smoothed_int",
+            colorbar_name=cbar_name,
             halo=any(st.session_state["merge_results"]["df"].halo>0)
         )
         st.pyplot(fig)

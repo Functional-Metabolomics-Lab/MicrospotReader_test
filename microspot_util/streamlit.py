@@ -197,6 +197,11 @@ def set_analyze_False():
     # Callback function to set analyze state to true
     st.session_state["analyze"]=False
 
+
+def set_analyze_True():
+    # Callback function to set analyze state to true
+    st.session_state["analyze"]=True
+
 def temp_figurefiles(figure_dict,suffix,directory):
     pathlist=[]
     for figname, figure in figure_dict.items():

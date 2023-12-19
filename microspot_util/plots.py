@@ -67,23 +67,17 @@ def plot_result(figure,axs,img,df,g_prop,halo:bool=True):
 
     figure.tight_layout()
 
-def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False,halo:bool=True):
-
-    if norm_data is True:
-        intensity="norm_intensity"
-        colorbar_name="Normalized Spot Intensity [a.u.]"
-    else:
-        intensity="spot_intensity"
-        colorbar_name="Spot Intensity [a.u.]"
+def plot_heatmapv2(figure,axs,df,conv_dict,value_col="norm_intensity",colorbar_name="Normalized Spot Intensity [a.u.]",halo:bool=True):
 
     data=df.copy()
+
     data.loc[data["halo"]>0,"radius"]=data.loc[data["halo"]>0,"halo"]
     data["color"]="dimgray"
     data.loc[data.halo>0,"color"]="red"
 
     rad_factor=220/data.radius.max()
 
-    sc=axs.scatter(data.column, -data.row, s=data.radius*rad_factor, c=data[intensity], cmap="viridis",edgecolors=data.color);
+    sc=axs.scatter(data.column, -data.row, s=data.radius*rad_factor, c=data[value_col], cmap="viridis",edgecolors=data.color);
     axs.set(     
         aspect="equal",
         ylabel="Row",
@@ -91,7 +85,8 @@ def plot_heatmapv2(figure,axs,df,conv_dict,norm_data=False,halo:bool=True):
         xticks=np.arange(data.column.min(),data.column.max()+1),
         yticks=-np.arange(data.row.min(),data.row.max()+1),
         yticklabels=[conv_dict[i].upper() for i in range(data.row.min(),data.row.max()+1)],
-        xticklabels=np.arange(data.column.min(),data.column.max()+1)
+        xticklabels=np.arange(data.column.min(),data.column.max()+1),
+        ylim=[-(data.row.max()+1),data.row.min()-1]
         );
 
     axs.spines[["right","left","top","bottom"]].set_visible(False)
@@ -147,12 +142,12 @@ def plot_heatmap(figure,axs,df,g_prop,norm_data:bool=False):
 def plot_chromatogram(figure,axs,df,norm_data:bool=False):
     df.sort_values("RT",inplace=True)
     if norm_data==False:
-        axs.plot(df["RT"],df["spot_intensity"],c="darkviolet",linewidth=1)
-        ylabel="Spot-Intensity [a.u.]"
+        axs.plot(df["RT"],df["smoothed_int"],c="darkviolet",linewidth=1)
+        ylabel="Smoothed Spot-Intensity [a.u.]"
 
     elif norm_data==True:
-        axs.plot(df["RT"],df["norm_intensity"],c="darkviolet",linewidth=1)
-        ylabel="Normalized Spot-Intensity [a.u.]"
+        axs.plot(df["RT"],df["smoothed_int"],c="darkviolet",linewidth=1)
+        ylabel="Smoothed Normalized Spot-Intensity [a.u.]"
 
     axs.set(
         ylabel=ylabel,

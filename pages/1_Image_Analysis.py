@@ -352,8 +352,8 @@ if inputfile:
             st.pyplot(fig)
 
         # Start the image processing algorithm. Only activated if all settings have been set
-        if st.form_submit_button("Start Analysis!",type="primary",disabled=st.session_state["init_analysis"], use_container_width=True):
-            st.session_state["analyze"] = True
+        if st.form_submit_button("Start Analysis!",type="primary",disabled=st.session_state["init_analysis"], use_container_width=True,on_click=mst.set_analyze_True):
+            pass
 
 # Initiates Analysis and displays results if Starts Analysis button has been pressed.
 if st.session_state["analyze"] is True:
@@ -525,6 +525,15 @@ if st.session_state["analyze"] is True:
 
     # Displays a heatmap of spot-intensities
     with tab3:
+
+        if st.session_state["norm"] is True:
+            value_col="norm_intensity"
+            cbar_name="Normalized Spot Intensity [a.u.]"
+        
+        else:
+            value_col="spot_intensity"
+            cbar_name="Spot Intensity [a.u.]"
+
         st.markdown("## Heatmap of Results")
         # Display Image and corresponding Heatmap
         fig_hm,ax=plt.subplots()
@@ -533,7 +542,8 @@ if st.session_state["analyze"] is True:
             axs=ax,
             df=df,
             conv_dict=row_conv_inv,
-            norm_data=st.session_state["norm"],
+            value_col=value_col,
+            colorbar_name=cbar_name,
             halo=st.session_state["halo_toggle"]
         )
         st.pyplot(fig_hm)
