@@ -18,8 +18,6 @@ with st.sidebar:
 
 st.image(r"assets/Logo.png")
 
-st.title("🚧 Under Construction 🚧")
-
 st.markdown("### What is the MicroSpot-Reader WebApp used for?")
 
 st.markdown("""
@@ -33,14 +31,19 @@ st.markdown("""
 st.markdown("### Input File Requirements")
 
 st.markdown("""
-
-""")
-
-st.markdown("### Output File Information")
-
-st.markdown("""
-
-""")
+            **Image File Requirements:**
+            - File format: .png, .jpg, or .tif.
+            - Color space: RGB or grayscale.
+            - Image content: Circular wells or spots in a grid-based configuration.
+            - Recommended: Crop image to only contain wells or spots.
+            - If multiple assays are needed for one experiment: Capture one image per assay or split recorded image for independent analysis.
+            - Avoid oversaturation to prevent distortion of peak shapes.
+            
+            **MS Data Requirements:**
+            - Input: Centroided .mzML File of LC-MS run
+            - Recommended: file from the same LC run as activity data
+            - RT of compounds must be similar for activity data and MS data
+            """)
 
 st.markdown("### We value your Feedback!")
 
@@ -49,7 +52,7 @@ st.markdown("""
             Your input is invaluable in making the MicroSpot-Reader WebApp better for everyone.
 
             [Create an Issue on GitHub](https://github.com/Functional-Metabolomics-Lab/MicrospotReader/issues/new)
-""")
+            """)
 
 st.markdown("### Contribute and Follow Us")
 
