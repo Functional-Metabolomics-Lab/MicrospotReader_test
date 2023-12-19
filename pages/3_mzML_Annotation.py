@@ -4,16 +4,17 @@ import microspot_util as msu
 import microspot_util.streamlit as mst
 import microspot_util.plots as plots
 import pyopenms as oms
-from io import StringIO
-from pyopenms.plotting import plot_spectrum,plot_chromatogram
+import io
+from pyopenms.plotting import plot_chromatogram
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()
 st.session_state["merge_state"]=False
-# Displays data that has been saved in the current session in tabular format.
-mst.datainfo()
+
+with st.sidebar:
+    # Displays data that has been saved in the current session in tabular format.
+    mst.datainfo()
 
 st.markdown("# Annotation of .mzML-Files")
 
@@ -82,7 +83,7 @@ with c1:
     # Initiate the Annotation if everything has been selected
     if st.button("Annotate Data",disabled=st.session_state["disable_mzml"],type="primary",use_container_width=True):
         # Create new MS Experiment and load mzml file to it.
-        mzml_string=StringIO(mzml_upload.getvalue().decode("utf-8")).read()
+        mzml_string=io.StringIO(mzml_upload.getvalue().decode("utf-8")).read()
         exp=oms.MSExperiment()
         oms.MzMLFile().loadBuffer(mzml_string,exp)
         
@@ -92,17 +93,13 @@ with c1:
         # Save the experiment in a session state
         st.session_state["annot_mzml"]=exp
         
-        # Store the mzml file on the server as an output, this is needed for the download button to work
-        mzml_output=oms.MzMLFile().store("output.mzML",st.session_state["annot_mzml"])
-        
-        # enable the download button
         st.session_state["mzml_download"]=False
 
 with c2:
     # If Downloadbutton is enabled, show it and allow the download
     if st.session_state["mzml_download"]==False:
-        with open("output.mzML", "rb") as mzml_file:
-            st.download_button(label="Download mzML File",data=mzml_file,mime="mzML",use_container_width=True)
+        # Store the mzml file on the server as an output, this is needed for the download button to work
+        mst.download_mzml(st.session_state["annot_mzml"])
 
 # Display the TIC-Chromatogram aswell as the bioactivity chromatogram, derived from the mzml file.
 if st.session_state["annot_mzml"] is not None:

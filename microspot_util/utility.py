@@ -3,8 +3,6 @@
  Purpose:       Functions and Classes for detection of microspots.
 
  Author:        Simon Knoblauch
-
- Last modified: 2023-09-27
 -------------------------------------------------------------------------------
 '''
 
@@ -16,6 +14,9 @@ import numpy as np
 from pathlib import Path
 import streamlit as st
 import pyopenms as oms
+import scipy.signal as signal
+import scipy.stats as stats
+import scipy.ndimage as ndimage
 
 @st.cache_data
 def conv_gridinfo(point1:str,point2:str,conv_dict:dict) -> dict:
@@ -83,25 +84,248 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
     # Read image file.
     load=iio.imread(filename)
 
-    # Check if image is RGBA and convert image to grayscale.
-    if load.shape[2]==4:
-        gray_img=skimage.color.rgb2gray(load[:,:,0:3])
-
-    # Convert RGB images to grayscale.
-    elif load.shape[2]==3:
-        gray_img=skimage.color.rgb2gray(load)
+    if len(load.shape)<3:
+        gray_img=load
     
     else:
-        gray_img=load
+        # Check if image is RGBA and convert image to grayscale.
+        if load.shape[2]==4:
+            gray_img=skimage.color.rgb2gray(load[:,:,0:3])
+
+        # Convert RGB images to grayscale.
+        elif load.shape[2]==3:
+            gray_img=skimage.color.rgb2gray(load)
+        
+        else:
+            gray_img=load
 
     # Invert the intensity values. Comment out if you do not wish to invert the image.
-    if invert:
+    if invert is True:
         gray_img=skimage.util.invert(gray_img)
     
     return gray_img
 
+def baseline_correction2(array,conv_lvl=0.001,window_lvl=100,poly_lvl=2):
+    baseline_level=array.copy()
+    
+    if len(baseline_level)<window_lvl:
+        window_lvl=len(baseline_level)
 
-def annotate_mzml(exp,spot_df,spot_mz, intensity_scalingfactor):
+    # First time running the algo with a large window size to simply detect the general level of the baseline.
+    rmsd_lvl=10
+    while rmsd_lvl>conv_lvl:
+        sg_filt=signal.savgol_filter(baseline_level,window_lvl,poly_lvl)
+        baseline_new=np.minimum(sg_filt,baseline_level)
+        rmsd_lvl=np.sqrt(np.mean((baseline_new-baseline_level)**2))
+        baseline_level=baseline_new
+
+    return baseline_level, array-baseline_level
+    
+def baseline_correction(array,conv_lvl:float=0.001,conv_noise:float=0.0001,window_lvl:int=100,window_noise:int=5,poly_lvl:int=2,poly_noise:int=3):
+    """
+    ## Description
+    Baseline correction of an input array using a modified version of the asymmetric least squares method.
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |array|Seq, Array|Sequence to be baseline corrected|
+    |conv_lvl|float|convergence criteria for the determination of the baseline level|
+    |conv_noise|float|convergence criteria for the determination of the baseline containing noise|
+    |window_lvl|int|Window to be used for the savitzky-golay filter for detection of the baseline level|
+    |window_noise|int|Window to be used for the savitzky-golay filter for detection of the baseline containing noise|
+    |poly_lvl|int|order of the polynomial used to fit the data for baseline level detection|
+    |poly_noise|int|order of the polynomial used to fit the data for detection of baseline containing noise|
+
+    ## Returns
+    Tuple of the values for the baseline aswell as the corrected baseline vales
+    """
+
+    # The algorithm is essentially performed twice: once to determine the level of the baseline and once to actually smooth the chromatogram. The first step is important as sometimes the savgol_filter would dip way below the actual baseline leading to artefact-peaks if the baseline-correction was just performed with that result.
+    # This way the detected baseline cannot dip below the initally detected level, removing the artefact peaks.
+
+    baseline_noise=array.copy()
+    baseline_level=array.copy()
+    
+    if len(baseline_level)<window_lvl:
+        window_lvl=len(baseline_level)
+
+    # First time running the algo with a large window size to simply detect the general level of the baseline.
+    rmsd_lvl=10
+    while rmsd_lvl>conv_lvl:
+        sg_filt=signal.savgol_filter(baseline_level,window_lvl,poly_lvl)
+        baseline_new=np.minimum(sg_filt,baseline_level)
+        rmsd_lvl=np.sqrt(np.mean((baseline_new-baseline_level)**2))
+        baseline_level=baseline_new
+
+    # Second time running the algo to actually be able to filter out the noise. 
+    # Note that for the new baseline first the filter result is compared to the previous baseline to find the minimum, this way peaks are removed from the baseline. Then the result is compared to the coarse baseline level to find areas that deviate too much.
+    rmsd_noise=10
+    while rmsd_noise>conv_noise:
+        sg_filt=signal.savgol_filter(baseline_noise,window_noise,poly_noise)
+        # baseline_new=np.maximum(np.minimum(test,baseline_noise),baseline_level)
+        baseline=np.minimum(sg_filt,baseline_noise)        
+        baseline_new=[]
+        for n,l in zip(baseline,baseline_level):
+            if np.abs(n-l)>10*baseline_level.std():
+                baseline_new.append(l)
+            else:
+                baseline_new.append(n)
+        baseline_new=np.array(baseline_new)
+
+        rmsd_noise=np.sqrt(np.mean((baseline_new-baseline_noise)**2))
+        baseline_noise=baseline_new
+
+    corr_ints=array-baseline_noise
+    return baseline_noise,baseline_level,corr_ints
+
+def baseline_noise(array:pd.Series, convergence_criteria:float=0.02):
+    """
+    ## Description
+    Finds the standard deviation and mean of the baseline of a chromatogram
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |array|Seq, Array|Sequence for which the baseline noise should be determined|
+    |convergence_criteria|float|convergence criteria for filtering outliers|
+    
+    ## Returns
+    standard deviation of baseline
+    mean value of baseline
+    """
+    mn_old=array.mean()
+    std_old=array.std()
+
+    rmsd=10
+    while rmsd>convergence_criteria:
+        test=array[array<mn_old+3*std_old]
+        mn_new=test.mean()
+        std_new=test.std()
+        
+        rmsd=np.sqrt(np.mean((std_new-std_old)**2))
+        
+        mn_old=mn_new
+        std_old=std_new
+
+    return std_old,mn_old
+
+def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:float=0.95,min_dist:int=10,datacolumn_name:str="norm_intensity"):
+    """
+    ## Description
+    Finds peaks and calculates the AUC in a spot-DataFrame
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |df|DataFrame|Spot-Dataframe to detect peaks in|
+    |baseline_convergence|float|Cutoff rmsd value for filtering outliers for baseline determination|
+    |rel_heigh|float|relative peak-height used as cutoff for AUC calculation|
+    |datacolumn_name|str|name of the df column containing the y data for peak detection|
+    
+    ## Returns
+    Dataframe containing information on peaks found in the spot-dataframe
+    """
+    bl_std,bl_mn=baseline_noise(df[datacolumn_name],baseline_convergence)
+
+    min_height=bl_mn+3*bl_std
+
+    peaks,_=signal.find_peaks(df[datacolumn_name],height=min_height,distance=min_dist,width=2)
+
+    _,_,left_ips,right_ips=signal.peak_widths(df[datacolumn_name],peaks,rel_height=rel_height)
+
+    aft=pd.DataFrame(
+            {
+            "peak_idx":peaks,
+            "RT":df.loc[peaks,"RT"].values,
+            "start_idx":left_ips.astype("int32"),
+            "end_idx":right_ips.astype("int32"),
+            "RTstart":df.loc[left_ips.astype("int32"),"RT"].values,
+            "RTend":df.loc[right_ips.astype("int32"),"RT"].values,
+            "max_int":df.loc[peaks,datacolumn_name].values,
+            "AUC":np.nan
+            }
+        ).rename_axis("peak_nr")
+
+    for idx in aft.index:
+        aft.loc[idx,"AUC"]=np.trapz(df.loc[aft.loc[idx,"start_idx"]:aft.loc[idx,"end_idx"],datacolumn_name])
+
+    return aft
+
+def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="smoothed_int",threshold:float=0.0):
+    """
+    ## Description
+    Finds peaks and calculates the AUC in a spot-DataFrame
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |df|DataFrame|Spot-Dataframe to detect peaks in|
+    |datacolumn_name|str|name of the df column containing the y data for peak detection|
+    
+    ## Returns
+    Dataframe containing information on peaks found in the spot-dataframe and updated main dataframe
+    """
+    # Create a heatmap from the spot intensities, it is better to do peak detection in 2d instead of on the chromatogram due to artifacts during image capturing.
+    img=df.pivot_table(datacolumn_name,index="row_name",columns="column")
+    
+    # ****SMOOTHING DONE IN DATA MERGING STEP****
+    # # do 1d gaussian smoothing. not 2d because you dont want to effect neighbouring rows.
+    # img[:]=ndimage.gaussian_filter1d(img,1)
+    
+    # # merge the smoothed spot intensities into the main dataframe
+    # melt_img=pd.melt(img,value_name="smoothed_int",ignore_index=False)
+    # df=pd.merge(df,melt_img.reset_index(),on=["row_name","column"])
+
+    # do 2d peak detection 
+    peaks=skimage.feature.peak_local_max(
+        image=img.to_numpy(),
+        min_distance=1,
+        exclude_border=False,
+        threshold_abs=threshold
+    )
+
+    # get the main df indexes of all minimas to figure out peak width
+    #minima=df.index[signal.argrelmin(df[datacolumn_name].to_numpy())]
+
+    minima,_=signal.find_peaks(-df[datacolumn_name].to_numpy())
+
+    minima=df.index[minima]
+
+    # get the main df indexes of all peaks
+    peak_idx=[df.loc[(df["row_name"]==img.index[p[0]])&(df["column"]==img.columns[p[1]])].index.item() for p in peaks]
+
+    # get the left most indexes of all detected peaks
+    left_ips=[minima[minima<i][-1] if any(minima<i) else df.index[0] for i in peak_idx]
+
+    # get the right most indexes of all detected peaks
+    right_ips=[minima[minima>i][0] if any(minima>i) else df.index[-1] for i in peak_idx]
+
+    # save peak data in a new dataframe
+    aft=pd.DataFrame(
+                {
+                "peak_idx":peak_idx,
+                "RT":df.loc[peak_idx,"RT"].values,
+                "start_idx":left_ips,
+                "end_idx":right_ips,
+                "RTstart":df.loc[left_ips,"RT"].values,
+                "RTend":df.loc[right_ips,"RT"].values,
+                "max_int":df.loc[peak_idx,datacolumn_name].values,
+                "AUC":np.nan
+                }
+            ).rename_axis("peak_nr")
+
+    # calculate the AUC of each peak
+    for idx in aft.index:
+        aft.loc[idx,"AUC"]=np.trapz(df.loc[aft.loc[idx,"start_idx"]:aft.loc[idx,"end_idx"],datacolumn_name])
+
+    return df,aft,peaks
+
+def annotate_mzml(exp:oms.MSExperiment,spot_df:pd.DataFrame,spot_mz:float, intensity_scalingfactor:float,norm_data:bool=True):
     """
     ## Description
     Sets the value of a specified m/z in an MS1 spectrum at a specific retention time to a scaled and interpolated spot-intensity value based off of a DataFrame containing RT-matched spot intensities.
@@ -114,6 +338,7 @@ def annotate_mzml(exp,spot_df,spot_mz, intensity_scalingfactor):
     |spot_df|DataFrame|DataFrame containing Retention Time matched spot-intensities|
     |spot_mz|float|m/z value to be set to the interpolated spot-intensity|
     |intensity_scalingfactor|float|Value by which to scale the interpolated spotintensity for MS1 annotation|
+    |norm_data|bool|Uses Normalized Spot-Data if set to True|
     """
     spots=spot_df.sort_values("RT")
 
@@ -141,15 +366,21 @@ def annotate_mzml(exp,spot_df,spot_mz, intensity_scalingfactor):
                 # If there is no higher RT in the spotlist, take the next smallest one.
                 next_spot=prev_spot
             
-            # Interpolate the spot intensity for the RT value
-            interp_intensity=np.interp(rt_val,[prev_spot["RT"],next_spot["RT"]],[prev_spot["spot_intensity"],next_spot["spot_intensity"]])
+            if norm_data==False:
+                # Interpolate the spot intensity for the RT value
+                interp_intensity=np.interp(rt_val,[prev_spot["RT"],next_spot["RT"]],[prev_spot["spot_intensity"],next_spot["spot_intensity"]])
             
-            # Append the array of peak-m/z values with the one specified to save the spot intensity
-            peak_mz=np.append(spectrum.get_peaks()[0],spot_mz)
-            # Append the array of peak-intensities with the scaled version of the interpolated spot intensity
-            peak_int=np.append(spectrum.get_peaks()[1],interp_intensity*intensity_scalingfactor)
-            # Save the new peak arrays in the spectrum.
-            spectrum.set_peaks((peak_mz,peak_int))
+            elif norm_data==True:
+                # Interpolate the spot intensity for the RT value
+                interp_intensity=np.interp(rt_val,[prev_spot["RT"],next_spot["RT"]],[prev_spot["norm_intensity"],next_spot["norm_intensity"]])
+            
+            if interp_intensity>0:
+                # Append the array of peak-m/z values with the one specified to save the spot intensity
+                peak_mz=np.append(spectrum.get_peaks()[0],spot_mz)
+                # Append the array of peak-intensities with the scaled version of the interpolated spot intensity
+                peak_int=np.append(spectrum.get_peaks()[1],interp_intensity*intensity_scalingfactor)
+                # Save the new peak arrays in the spectrum.
+                spectrum.set_peaks((peak_mz,peak_int))
         
         # Append current spectrum to the modified list of spectra
         spec_list.append(spectrum)
@@ -160,6 +391,315 @@ def annotate_mzml(exp,spot_df,spot_mz, intensity_scalingfactor):
     # Save the spectra-list to the MS Experiment
     exp.setSpectra(spec_list)
 
+def feature_finding(exp:oms.MSExperiment,filename:str,mass_error:float=10.0,noise_threshold:float=1000.0,min_fwhm=1.0,max_fwhm=60.0):
+    """
+    ## Description
+    Implemented feature finding algorithm from pyopenms https://pyopenms.readthedocs.io/en/latest/user_guide/feature_detection.html
+
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |exp|MSExperiment|pyOpenMS MSExperiment class with a loaded mzml file|
+    |mass_error|float|mass error in ppm|
+    |noise_threshold|float|intensity threshold for noise|
+    |min_fwhm|float|Minimum full width at half maximum of features|
+    |max_fwhm|float|Maximum full width at half maximum of features|
+
+    ## Output
+
+    oms.FeatureMap instance containing information on the detected features
+    """
+    exp.sortSpectra(True)
+
+    mass_traces = []
+    mtd = oms.MassTraceDetection()
+    mtd_params = mtd.getDefaults()
+    mtd_params.setValue(
+        "mass_error_ppm", float(mass_error)
+    )  # set according to your instrument mass error
+    mtd_params.setValue(
+        "noise_threshold_int", float(noise_threshold)
+    )  # adjust to noise level in your data
+    mtd.setParameters(mtd_params)
+    mtd.run(exp, mass_traces, 0)
+
+    mass_traces_split = []
+    mass_traces_final = []
+    epd = oms.ElutionPeakDetection()
+    epd_params = epd.getDefaults()
+    epd_params.setValue("width_filtering", "fixed")
+    epd_params.setValue("min_fwhm",float(min_fwhm))
+    epd_params.setValue("max_fwhm",float(max_fwhm))
+    epd.setParameters(epd_params)
+    epd.detectPeaks(mass_traces, mass_traces_split)
+
+    if epd.getParameters().getValue("width_filtering") == "auto":
+        epd.filterByPeakWidth(mass_traces_split, mass_traces_final)
+    else:
+        mass_traces_final = mass_traces_split
+
+    fm = oms.FeatureMap()
+    feat_chrom = []
+    ffm = oms.FeatureFindingMetabo()
+    ffm_params = ffm.getDefaults()
+    ffm_params.setValue("isotope_filtering_model", "none")
+    ffm_params.setValue(
+        "remove_single_traces", "true"
+    )  # set false to keep features with only one mass trace
+    ffm_params.setValue("mz_scoring_by_elements", "false")
+    ffm_params.setValue("report_convex_hulls", "true")
+    ffm.setParameters(ffm_params)
+    ffm.run(mass_traces_final, fm, feat_chrom)
+
+    fm.setUniqueIds()
+    fm.setPrimaryMSRunPath([filename.encode()])
+
+    return fm
+
+def ms2_mapping(exp:oms.MSExperiment,fm:oms.FeatureMap):
+    """
+    ## Description
+    Implemented algorithm for mapping ms2 data to features from pyopenms https://pyopenms.readthedocs.io/en/latest/user_guide/untargeted_metabolomics_preprocessing.html
+
+    Maps the ms2 data to features in the featuremap
+
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |exp|MSExperiment|pyOpenMS MSExperiment class with a loaded mzml file|
+    |fm|oms.FeatureMap|Featuremap instance from feature finding|
+    """
+
+    use_centroid_rt = False
+    use_centroid_mz = True
+    mapper = oms.IDMapper()
+    peptide_ids = []
+    protein_ids = []
+
+    mapper.annotate(
+        fm,
+        peptide_ids,
+        protein_ids,
+        use_centroid_rt,
+        use_centroid_mz,
+        exp,
+    )
+
+def adduct_detector(fm:oms.FeatureMap,adduct_list:list[str]=[b'H:+:0.4', b'Na:+:0.2', b'NH4:+:0.2', b'H3O1:+:0.1', b'CH2O2:+:0.1',b"H-2O-1:0:0.2"]):
+    """
+    ## Description
+    Implemented algorithm adduct detection from pyopenms https://pyopenms.readthedocs.io/en/latest/user_guide/adduct_detection.html
+
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |fm|oms.FeatureMap|Featuremap instance from feature finding|
+    |adduct_list|list of strings|list of strings containing all expected adducts, rules for the list can be found on the linked website|
+
+    ## Output
+    ft -> pd.Dataframe feature table containing information on all features
+    groups -> result consensus map: will store grouped features belonging to a charge group, used to save an mgf file
+    """
+    
+    # initialize MetaboliteFeatureDeconvolution
+    mfd = oms.MetaboliteFeatureDeconvolution()
+
+    # get default parameters
+    params = mfd.getDefaults()
+    # update/explain most important parameters
+
+    # adducts to expect: elements, charge and probability separated by colon
+    # the total probability of all charged adducts needs to be 1
+    # e.g. positive mode:
+    # proton dduct "H:+:0.6", sodium adduct "Na:+:0.4" and neutral water loss "H-2O-1:0:0.2"
+    # e.g. negative mode:
+    # with neutral formic acid adduct: "H-1:-:1", "CH2O2:0:0.5"
+    # multiples don't need to be specified separately:
+    # e.g. [M+H2]2+ and double water loss will be detected as well!
+    # optionally, retention time shifts caused by adducts can be added
+    # e.g. a formic acid adduct causes 3 seconds earlier elution "CH2O2:0:0.5:-3"
+    params.setValue(
+        "potential_adducts", 
+        adduct_list
+    )
+
+    # expected charge range
+    # e.g. for positive mode metabolomics:
+    # minimum of 1, maximum of 3, maximum charge span for a single feature 3
+    # for negative mode:
+    # charge_min = -3, charge_max = -1
+    params.setValue("charge_min", 1, "Minimal possible charge")
+    params.setValue("charge_max", 3, "Maximal possible charge")
+    params.setValue("charge_span_max", 3)
+
+    # maximum RT difference between any two features for grouping
+    # maximum RT difference between between two co-features, after adduct shifts have been accounted for
+    # (if you do not have any adduct shifts, this value should be equal to "retention_max_diff")
+    params.setValue("retention_max_diff", 3.0)
+    params.setValue("retention_max_diff_local", 3.0)
+
+    # set updated paramters object
+    mfd.setParameters(params)
+
+    # result feature map: will store features with adduct information
+    feature_map_MFD = oms.FeatureMap()
+    # result consensus map: will store grouped features belonging to a charge group
+    groups = oms.ConsensusMap()
+    # result consensus map: will store paired features connected by an edge
+    edges = oms.ConsensusMap()
+
+    # compute adducts
+    mfd.compute(fm, feature_map_MFD, groups, edges)
+
+    # export feature map as pandas DataFrame and append adduct information
+    ft = feature_map_MFD.get_df(export_peptide_identifications=False)
+    ft["adduct"] = [f.getMetaValue("dc_charge_adducts") for f in feature_map_MFD]
+
+    return ft, groups
+
+def xic_generator(exp:oms.MSExperiment, ft:pd.DataFrame):
+    """
+    ## Description
+
+    Creates feature-XICs and stores them in a dictionary as DataFrames from an oms.MSExperiment object. 
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |ft|DataFrame|Feature table containing information on mz-value and retention time. retention time column must be called "RT"|
+    |exp|oms.MSExperiment|MSExperiment object containing the LC-MS run from which the features were determined|
+
+    ## Output
+
+
+    """
+    specs={spec.getRT():{"mz":spec.get_peaks()[0],"int":spec.get_peaks()[1]} for spec in exp if spec.getMSLevel()==1}
+
+    xics={}
+    for i in ft.index:
+        
+        intsum_list=[]
+        rtlist=[]
+
+        for rt,pk in specs.items():
+
+            # if rt >= ft.loc[i,"RTstart"] and rt <= ft.loc[i,"RTend"]:
+
+            intsum_list.append(pk["int"][(ft.loc[i,"MZstart"]<=pk["mz"]) & (ft.loc[i,"MZend"]>=pk["mz"])].sum())
+            rtlist.append(rt)
+
+        xics[i]=pd.DataFrame({"rt":rtlist,"int":intsum_list})
+    
+    return xics,specs
+
+def extract_xic_peakwindow(xic_dict:dict,ft:pd.DataFrame,window:float):
+    """
+    ## Description
+
+    Calculates the pearson correlation coefficient of a normalized activity peak to a normalized feature-peak correlated to the activity peak by retention time.
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |ft|DataFrame|Feature table containing information on mz-value and retention time. retention time column must be called "RT"|
+    |xic_dict|dict|Dictionary containing the xics of all features|
+    |window|float|window in [s] around the peak that is extracted|
+    
+    ## Output
+
+    Dictionary containing DataFrames containing the chromatograms of the peaks extracted from the feature-chromatograms.
+    """
+    cutxic={}
+    for i, df in xic_dict.items():
+        df_cut=df.loc[(df["rt"]>ft.loc[i,"RT"]-0.5*window)&(df["rt"]<ft.loc[i,"RT"]+0.5*window)].copy()
+        df_cut["int"]=df_cut.loc[:,"int"]/(df_cut.loc[:,"int"].max())
+        cutxic[i]=df_cut
+    return cutxic
+
+def peak_pearsoncorr(xic_dict,ft,ap_df,peak,idx,ydata_name):
+    """
+    ## Description
+
+    Calculates the pearson correlation coefficient of a normalized activity peak to a normalized feature-peak correlated to the activity peak by retention time.
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |ft|DataFrame|Feature table containing information on mz-value and retention time. retention time column must be called "RT"|
+    |ap_df|DataFrame|Activity peak table, contains information on activity peaks at specific retention times|
+    |peak|DataFrame|Activity peak used during the correlation|
+    |xic_dict|dict|Dictionary containing the xics of all features|
+    |idx|int|index of the current row in the feature table|
+    |ydata_name|str|Name of the Column in act_df containing the y-axis information of the activity chromatogram|
+    """
+
+    for i in ft.loc[ft[f"corr_activity_peak{idx}"]>0].index:
+        df=xic_dict[i]
+        if len(df)>=len(ap_df):
+            interpRT=np.linspace(peak.RTstart,peak.RTend,len(df))
+            interpInt=np.interp(interpRT,ap_df["RT"],ap_df[ydata_name])
+            ft.loc[i,f"pearson_corr_peak{idx}"]=stats.pearsonr(df["int"],interpInt).statistic
+        else:
+            interpRT=np.linspace(df.rt.iloc[0],df.rt.iloc[-1],len(ap_df))
+            interpInt=np.interp(interpRT,df.rt,df["int"])
+            ft.loc[i,f"pearson_corr_peak{idx}"]=stats.pearsonr(interpInt,ap_df[ydata_name]).statistic
+
+def peakshape_corr(xic_dict:dict,ft:pd.DataFrame,ap_df:pd.DataFrame,act_df:pd.DataFrame,idx:int,ydata_name:str="norm_intensity"):
+    """
+    ## Description
+
+    Calculates the pearson correlation coefficient of each normalized activity peak to all normalized feature-peaks correlated to the activity peak by retention time.
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |ft|DataFrame|Feature table containing information on mz-value and retention time. retention time column must be called "RT"|
+    |ap_df|DataFrame|Activity peak table, contains information on activity peaks at specific retention times|
+    |act_df|DataFrame|Dataframe resulting from the data merging step of the microspot reader workflow|
+    |xic_dict|dict|Dictionary containing the xics of all features|
+    |idx|int|index of the current row in the feature table|
+    |ydata_name|str|Name of the Column in act_df containing the y-axis information of the activity chromatogram|
+    """
+    pk=ap_df.loc[idx].copy()
+
+    cutap=act_df.loc[pk["start_idx"]:pk["end_idx"]].copy()
+    cutap[ydata_name]=cutap[ydata_name]/cutap[ydata_name].max()
+    width=np.abs(pk["RTend"]-pk["RTstart"])
+
+    cutxic=extract_xic_peakwindow(xic_dict,ft,width)
+    
+    peak_pearsoncorr(cutxic,ft,cutap,pk,idx,ydata_name)
+
+def activity_annotation_features(ft:pd.DataFrame,aft:pd.DataFrame,act_df:pd.DataFrame,xic_dict:dict,rt_tolerance:float,rt_offset:float,ydata_name:str="norm_intensity"):
+    """
+    ## Description
+
+    Annotates the feature table from metabolomics feature detection with activity data from an activity feature table
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |ft|DataFrame|Feature table containing information on mz-value and retention time. retention time column must be called "RT"|
+    |aft|DataFrame|Activity peak table, contains information on activity peaks at specific retention times|
+    |act_df|DataFrame|Dataframe resulting from the data merging step of the microspot reader workflow|
+    |xic_dict|dict|Dictionary containing the xics of all features|
+    |rt_tolerance|float|tolerance of rt in seconds within which features will be correlated|
+    |rt_offset|float|Offset of the activity chromatogram to the |
+    |ydata_name|str|Name of the Column in act_df containing the y-axis information of the activity chromatogram|
+    """
+    for iat in aft.index:
+        ft.loc[rt_tolerance>=np.abs(ft["RT"]-(aft.loc[iat,"RT"]+rt_offset)),f"corr_activity_peak{iat}"]=aft.loc[iat,"AUC"]
+        ft[f"pearson_corr_peak{iat}"]=None
+
+        peakshape_corr(xic_dict,ft,aft,act_df,iat,ydata_name)
 
 class spot:
     """
@@ -197,7 +737,7 @@ class spot:
     |row_name|Name of Row|
     |rt|Retention Time of Spot in s|
     """
-    def __init__(self,x:float,y:float,rad:int=25,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan,sample_type:str="Sample",norm_int:float=np.nan) -> None:
+    def __init__(self,x:float,y:float,rad:int=0,halo_rad=np.nan,int=np.nan,note="Initial Detection",row:int=np.nan,col:int=np.nan,row_name:str=np.nan,rt=np.nan,sample_type:str="Sample",norm_int:float=np.nan) -> None:
         self.x=x
         self.y=y
         self.rad=rad
@@ -214,6 +754,7 @@ class spot:
     def assign_halo(self,halo_list:list,dist_thresh:float=14.73402725) -> None:
         """
         ## Description
+
         Checks a list of halos for a match and assigns it to the spot.
 
         ## Input
@@ -230,6 +771,7 @@ class spot:
     def get_intensity(self,img:np.array,rad:int=None) -> None:
         """
         ## Description
+
         Determines the average pixel-intensity of a spot in an image.
 
         ## Input
@@ -323,7 +865,7 @@ class spot:
 
     @staticmethod
     @st.cache_data
-    def detect(gray_img:np.array,spot_nr:int,canny_sig:int=10,canny_lowthresh:float=0.001,canny_highthresh:float=0.001,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.3,small_rad:int=20,large_rad:int=30) -> list:
+    def detect(gray_img:np.array,spot_nr:int,canny_sig:int=10,canny_lowthresh:float=0.001,canny_highthresh:float=0.001,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.3,small_rad:int=20,large_rad:int=30,troubleshoot:bool=False) -> list:
         """
         ## Description
 
@@ -373,7 +915,10 @@ class spot:
         
         spotlist=[spot(x,y,rad) for x,y,rad in zip(spot_x,spot_y,spot_rad)]
         
-        return spotlist
+        if troubleshoot is False:
+            return spotlist
+        else:
+            return spotlist, {"edge":edges,"hough":spot_hough}
     
     @staticmethod
     def annotate_RT(spot_list:list,start:float,end:float)->list:
@@ -487,7 +1032,7 @@ class spot:
             spot_list.append(spot(x=df.loc[idx,"x_coord"],
                                   y=df.loc[idx,"y_coord"],
                                   rad=df.loc[idx,"radius"],
-                                  halo=df.loc[idx,"halo"],
+                                  halo_rad=df.loc[idx,"halo"],
                                   int=df.loc[idx,"spot_intensity"],
                                   note=df.loc[idx,"note"],
                                   row=df.loc[idx,"row"],
@@ -501,7 +1046,7 @@ class spot:
 
 
     @staticmethod
-    def backfill(spot_list:list,x,y):
+    def backfill(spot_list:list,x,y,rad):
         """
         ## Description
 
@@ -513,13 +1058,14 @@ class spot:
         |---|---|---|
         |spot_list|list|List of spot-objects to be backfilled|
         |x|float|x-coordinate of the spot to be backfilled|
-        |y|float|y-coordinate of the spot to be backfilled
+        |y|float|y-coordinate of the spot to be backfilled|
+        |rad|float|radius of the spot to be backfilled in pixels|
 
         ## Output
 
         None.
         """
-        spot_list.append(spot(int(x),int(y),note="Backfilled"))
+        spot_list.append(spot(int(x),int(y),int(rad),note="Backfilled"))
     
     @staticmethod
     def find_topleft(spot_list:list):
@@ -837,7 +1383,7 @@ class halo:
 
     @staticmethod
     @st.cache_data
-    def detect(img,canny_sig:float=3.52941866,canny_lowthresh:float=44.78445877,canny_highthresh:float=44.78445877,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.38546213,min_rad:int=40,max_rad:int=70):
+    def detect_old(img,canny_sig:float=3.52941866,canny_lowthresh:float=44.78445877,canny_highthresh:float=44.78445877,hough_minx:int=70,hough_miny:int=70,hough_thresh:float=0.38546213,min_rad:int=40,max_rad:int=70):
         """
         ## Description
 
@@ -885,6 +1431,64 @@ class halo:
         halo_list=[halo(x,y,rad) for x,y,rad in zip(h_x,h_y,h_radii)]
         return halo_list
     
+    @staticmethod
+    @st.cache_data
+    def detect(img,min_rad:int=40,max_rad:int=100,min_xdist:int=70,min_ydist:int=70,thresh:float=0.2,min_obj_size:int=800,troubleshoot:bool=False,dil_disk:int=3):
+        """
+        ## Description
+
+        Crude detection of halos in a grayscale image.
+
+        ## Input
+
+        |Parameter|Type|Description|
+        |---|---|---|
+        |img|np.array|Grayscale np.array of image to be analyzed|
+        |min_obj_size|int|Minimum size of objects after creation of mask, anything smaller will be removed|
+        |min_xdist|int|Miniumum distance in x direction between 2 peaks during circle detection using hough transform|
+        |min_ydist|int|Miniumum distance in y direction between 2 peaks during circle detection using hough transform|
+        |thresh|int|threshold of peak-intensity during circle detection using hough transform as fraction of maximum value|
+        |min_rad|int|Minimum tested radius|
+        |max_rad|int|Maximum tested radius|
+
+        ## Output
+
+        List of detected halos as halo-objects
+        """
+
+        # Perform morphological reconstruction
+        mask=np.copy(img)
+        seed=np.copy(img)
+        seed[1:-1,1:-1]=img.min()
+        dilated=skimage.morphology.reconstruction(seed,mask,method="dilation")
+        recon=img-dilated
+        
+        # Threshold the reconstructed image and remove noise
+        bin_recon=recon>skimage.filters.threshold_otsu(recon)
+        bin_recon=skimage.morphology.remove_small_objects(bin_recon,min_size=min_obj_size)
+        # Biary opening to open holes for halos containing spots
+        bin_recon=skimage.morphology.binary_opening(bin_recon,skimage.morphology.disk(5))
+
+        # Generate a Skeleton of the binary reconstruction to get a single circle for each halo
+        skel=skimage.morphology.skeletonize(bin_recon)
+        # Dilate the skeleton to have some tolerance for circle detection
+        skel=skimage.morphology.binary_dilation(skel,skimage.morphology.disk(dil_disk))
+
+        test_radii=np.arange(min_rad,max_rad+1)
+        # Circle detection by hough transform.
+        halo_hough=skimage.transform.hough_circle(skel,test_radii)
+        accums, cx, cy, radii=skimage.transform.hough_circle_peaks(halo_hough,test_radii, 
+                                                                    min_xdistance=min_xdist,
+                                                                    min_ydistance=min_ydist,
+                                                                    threshold=thresh*halo_hough.max())
+
+        halo_list=[halo(x,y,rad) for x,y,rad in zip(cx,cy,radii)]
+        
+        if troubleshoot is True:
+            return halo_list, recon, bin_recon, skel, halo_hough
+        else:
+            return halo_list
+
     @staticmethod
     def create_df(halo_list:list) -> pd.DataFrame:
         """
