@@ -566,10 +566,6 @@ if st.session_state["analyze"] is True:
             st.pyplot(fig_grid)
             figuredict["detected_grid"]=fig_grid
 
-            fig,ax=plt.subplots()
-            ax.imshow(test["edge"])
-            st.pyplot(fig)
-
         with col2: 
             st.markdown("## Detected Grid")
             mst.v_space(1)
