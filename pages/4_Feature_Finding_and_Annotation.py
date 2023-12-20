@@ -24,20 +24,32 @@ with st.sidebar:
 
 st.markdown("# Feature finding and annotation with activity data")
 
-# Choose to upload a .csv file or use data saved in the current session.
-choose_input=st.selectbox("Upload of Merged Data:",["Use Selection in current Session","Upload Merged Data"])
+# # Choose to upload a .csv file or use data saved in the current session.
+# choose_input=st.selectbox("Upload of Merged Data:",["Use Selection in current Session","Upload Merged Data"])
+
+# choose_mzml=st.selectbox("Upload of .mzML-File:",["Upload .mzML File","Example .mzML File"])
 
 c1,c2=st.columns(2)
 
-with c1:
+with c2:
+    choose_mzml=st.selectbox("Upload of .mzML-File:",["Upload .mzML File","Example .mzML File"])
     # File upload for .mzml to be annotated
-    mzml_upload=st.file_uploader("Upload .mzML File","mzML")
+    if choose_mzml=="Upload .mzML File":
+        mzml_upload=st.file_uploader("Upload .mzML File","mzML")
+    else:
+        mzml_upload="example_files/example_mzml.mzML"
+        mst.v_space(3)
+        st.info("**Example .mzML File**")
+
+with c1:
+    # Choose to upload a .csv file or use data saved in the current session.
+    choose_input=st.selectbox("Upload of Merged Data:",["Use Selection in current Session","Upload Merged Data"])
 
 if choose_input=="Use Selection in current Session":
     # choose data from the current session
     data_id=st.session_state["merge_df"].loc[st.session_state["merge_df"]["Select"]==True,"id"]
     
-    with c2:
+    with c1:
         # Display the chosen data by name
         st.caption("Selected Dataset from Session:")
         st.dataframe(st.session_state["merge_df"].loc[st.session_state["merge_df"]["Select"]==True,"Name"],column_config={"Name":"Selected Dataset:"},use_container_width=True,hide_index=True)
@@ -55,7 +67,7 @@ if choose_input=="Use Selection in current Session":
         st.warning("Please select __one__ merged dataset!")
 
 else:
-    with c2:
+    with c1:
         # File uploader for .csv containing merged data
         merge_upload=st.file_uploader("Upload RT annotated Datatable",["csv","tsv"])
     
@@ -92,7 +104,7 @@ with st.form("Settings"):
         )
 
         threshold_method=st.selectbox(
-            "Method for peak-threshold determination (activity data):",
+            "Method for activity-peak threshold determination:",
             ["Automatic","Manual"],
             index=0
         )
@@ -137,15 +149,23 @@ with st.form("Settings"):
 
     # Initiate the analysis if everything has been selected
     if analysis:
-        # Create new MS Experiment and load mzml file to it.
-        mzml_string=io.StringIO(mzml_upload.getvalue().decode("utf-8")).read()
-        exp=oms.MSExperiment()
-        oms.MzMLFile().loadBuffer(mzml_string,exp)
+
+        if choose_mzml=="Upload .mzML File":
+            # Create new MS Experiment and load mzml file to it.
+            mzml_string=io.StringIO(mzml_upload.getvalue().decode("utf-8")).read()
+            exp=oms.MSExperiment()
+            oms.MzMLFile().loadBuffer(mzml_string,exp)
+            filename=mzml_upload.name
+
+        else:
+            exp=oms.MSExperiment()
+            oms.MzMLFile().load(mzml_upload,exp)
+            filename="example_mzml.mzML"
 
         # Feature Detection and creation of a feature table from the mzml file.
         fm=msu.feature_finding(
             exp=exp,
-            filename=mzml_upload.name,
+            filename=filename,
             mass_error=mass_error,
             noise_threshold=noise_threshold,
             min_fwhm=float(min_fwhm),
@@ -220,7 +240,7 @@ with st.form("Settings"):
             "val_col":value_col,
             "baselineconv":pk_threshold,
             "consensus_map":consensus_map,
-            "mzml_name":mzml_upload.name,
+            "mzml_name":filename,
             "MSExperiment":exp,
             "peaks":pk
         }
