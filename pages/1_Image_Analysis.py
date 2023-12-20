@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from skimage.util import invert
 
-import microspot_util as msu
-import microspot_util.streamlit as mst
-import microspot_util.plots as plots
+import microspot_reader as msu
+import microspot_reader.streamlit as mst
+import microspot_reader.plots as plots
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()
@@ -51,11 +51,22 @@ row_conv_inv={v:k for k,v in row_conv.items()}
 
 
 # Selection between custom image upload or an example.
-choose_input=st.selectbox("File upload:",["Upload Image","Example for Testing"],on_change=mst.set_analyze_False)
+choose_input=st.selectbox(
+    "File upload:",
+    [
+        "Upload Image",
+        "Example Part 1 (Spot-Idx: A1-L11, Ctrl: Col 1)",
+        "Example Part 2 (Spot-Idx: A12-L22, Ctrl: Col 22)"
+    ],
+    on_change=mst.set_analyze_False
+)
 
-# Example image
-if choose_input=="Example for Testing":
-    inputfile=Path(r"test_images/standard_mix.tif")
+# Example images
+if choose_input=="Example Part 1 (Spot-Idx: A1-L11, Ctrl: Col 1)":
+    inputfile=Path(r"example_files/part1_a1-l11.tif")
+
+elif choose_input=="Example Part 2 (Spot-Idx: A12-L22, Ctrl: Col 22)":
+    inputfile=Path(r"example_files/part2_a12-l22.tif")
 
 # File uploader for custom image files
 else:

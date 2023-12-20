@@ -4,9 +4,9 @@ from matplotlib import pyplot as plt
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 
-import microspot_util.plots as plots
-import microspot_util.streamlit as mst
-import microspot_util as msu
+import microspot_reader.plots as plots
+import microspot_reader.streamlit as mst
+import microspot_reader as msu
 
 # Dictionaries to convert Row-Letters into Row-Numbers and vice versa (required for heatmap)
 row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}

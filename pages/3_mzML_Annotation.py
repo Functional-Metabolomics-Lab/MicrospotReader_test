@@ -6,9 +6,9 @@ import pyopenms as oms
 from pyopenms.plotting import plot_chromatogram
 import matplotlib.pyplot as plt
 
-import microspot_util as msu
-import microspot_util.streamlit as mst
-import microspot_util.plots as plots
+import microspot_reader as msu
+import microspot_reader.streamlit as mst
+import microspot_reader.plots as plots
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()

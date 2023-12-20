@@ -1,5 +1,5 @@
 import streamlit as st
-import microspot_util.streamlit as mst
+import microspot_reader.streamlit as mst
 
 mst.page_setup()
 
