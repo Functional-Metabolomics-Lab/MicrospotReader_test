@@ -1,12 +1,12 @@
 import streamlit as st
 import pandas as pd
 from matplotlib import pyplot as plt
+import numpy as np
+from scipy.ndimage import gaussian_filter1d
+
 import microspot_util.plots as plots
 import microspot_util.streamlit as mst
 import microspot_util as msu
-import numpy as np
-import scipy.signal as signal
-from scipy.ndimage import gaussian_filter1d
 
 # Dictionaries to convert Row-Letters into Row-Numbers and vice versa (required for heatmap)
 row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}
@@ -174,7 +174,7 @@ if dataprep is True:
     # Create a dataframe from the spot-data
     df=msu.spot.create_df(merged_spots)
     
-    # Annotation of all spots with a retention time if enabled
+    # Annotation of all spots with a retention time 
     if st.session_state["ignoreCtrl"]==True:
         
         df.loc[df["type"]=="Sample","RT"]=np.linspace(
@@ -190,6 +190,7 @@ if dataprep is True:
             t_end,
             num=len(df)
         )
+
     df=df.loc[df["RT"]>0].reset_index().copy()
     
     # baseline,level,df[st.session_state["toggleNorm"]]=msu.baseline_correction(
@@ -202,6 +203,7 @@ if dataprep is True:
     #     poly_noise=3
     # )
 
+    # baseline correction using savitz-golay filter
     baseline,df["smoothed_int"]=msu.baseline_correction2(
         array=df[st.session_state["toggleNorm"]],
         conv_lvl=0.001,
@@ -209,6 +211,7 @@ if dataprep is True:
         poly_lvl=1,
     )
 
+    # curve smoothing using gaussian
     df["smoothed_int"]=gaussian_filter1d(
         input=df["smoothed_int"].to_numpy(),
         sigma=sigma_smooth

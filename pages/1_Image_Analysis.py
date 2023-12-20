@@ -1,11 +1,13 @@
+from pathlib import Path
+
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
+from skimage.util import invert
+
 import microspot_util as msu
 import microspot_util.streamlit as mst
 import microspot_util.plots as plots
-import skimage
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()
@@ -375,6 +377,7 @@ if st.session_state["analyze"] is True:
         troubleshoot=True
         )
     
+    # determination of avg spot radius, used for backfilling of spots during spot correction
     avg_spotradius=np.mean([s.rad for s in init_spots])
 
     # Create an empty image and draw a dot for each detected spot.
@@ -434,7 +437,7 @@ if st.session_state["analyze"] is True:
     )
 
     if st.session_state["adv_settings"]["spot_misc"]["invert_int"] is True:
-        st.session_state["img"]=skimage.util.invert(st.session_state["img"])
+        st.session_state["img"]=invert(st.session_state["img"])
 
     # Calculate the spot intensity and label controls
     for s in sort_spots:

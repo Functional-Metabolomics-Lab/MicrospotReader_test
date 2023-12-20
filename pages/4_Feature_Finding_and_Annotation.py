@@ -1,12 +1,14 @@
+import io
+
 import streamlit as st
 import pyopenms as oms
 import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
+
 import microspot_util as msu
 import microspot_util.streamlit as mst
 import microspot_util.plots as plots
-import io
-import matplotlib.pyplot as plt
-import matplotlib.patheffects as pe
 
 # Dictionaries to convert Row-Letters into Row-Numbers and vice versa (required for heatmap)
 row_conv={"abcdefghijklmnopqrstuvwxyz"[i-1]: i for i in range(1,27)}
@@ -75,7 +77,7 @@ with st.form("Settings"):
 
     with c1:
         mass_error=st.number_input(
-            "Mass Error *[in ppm]*:",
+            "Mass Error for feature detection*[in ppm]*:",
             value=10.0
         )
         
@@ -90,7 +92,7 @@ with st.form("Settings"):
         )
 
         threshold_method=st.selectbox(
-            "Method for peak-threshold determination:",
+            "Method for peak-threshold determination (activity data):",
             ["Automatic","Manual"],
             index=0
         )
@@ -107,7 +109,7 @@ with st.form("Settings"):
 
     with c2:
         noise_threshold=st.number_input(
-            "Noise Threshold:",
+            "Noise Threshold for feature detection:",
             value=1e5
         )
 
@@ -122,7 +124,7 @@ with st.form("Settings"):
         )
 
         baseline_conv=st.number_input(
-            "Peak-Threshold criteria:",
+            "Peak-Threshold criteria (activity data):",
             value=0.02,
             format="%f"
         )
@@ -133,7 +135,7 @@ with st.form("Settings"):
             index=2
         )
 
-    # Initiate the Annotation if everything has been selected
+    # Initiate the analysis if everything has been selected
     if analysis:
         # Create new MS Experiment and load mzml file to it.
         mzml_string=io.StringIO(mzml_upload.getvalue().decode("utf-8")).read()
@@ -150,11 +152,13 @@ with st.form("Settings"):
             max_fwhm=float(max_fwhm),
         )
 
+        # Maps ms2 spectra to features in the created featuremap for export of .mgf file 
         msu.ms2_mapping(
             exp=exp,
             fm=fm
         )
 
+        # Adduct detection in fm, might be unreliable
         ft,consensus_map=msu.adduct_detector(
             fm=fm,
             adduct_list=[
@@ -167,38 +171,35 @@ with st.form("Settings"):
             ]
         )
 
-        # Generation of xics for all features in ft.
+        # Generation of xics for all features in the featuretable ft.
         xic_dict,specta=msu.xic_generator(
             exp=exp,
             ft=ft
         )
 
-        # Peak-detection in the activity chromatogram.
+    # Peak-detection in the activity chromatogram.
         merged_data.sort_values("RT",inplace=True)
-        # aft=msu.peak_detection(
-        #     df=merged_data,
-        #     baseline_convergence=baseline_conv,
-        #     rel_height=0.95,
-        #     datacolumn_name=value_col,
-        # )
-
+        # determine peak-threshold based on user input
         if threshold_method == "Manual":
             pk_threshold=baseline_conv
         
         else:
+            # small algorithm that tries to estimate noise by removing outliers (peaks) from the dataset
             stdev,mn=msu.baseline_noise(
                 merged_data[value_col],
                 baseline_conv
             )
-
             pk_threshold=mn+3*stdev
 
+        # peak detection in 2d -> essentially a heatmap of the spot-data is used to determine the location of peaks
+        # This is due to the fact that spots showing activity lead to increased intensites in a radius around the spot itself, if peak detection would be performed in the 1d chromatogram, these proximal regions to the active spot might also be detected as peaks even though they are not caused by active compounds. peakdetection in 2d circumvents this problem by only allowing spots to be peak-maxima when no surrounding spots show higher intensity.
         merged_data,aft,pk=msu.img_peak_detection(
             df=merged_data,
             datacolumn_name=value_col,
             threshold=pk_threshold
         )
 
+        # feature table from ms feature detection is annotated with activity data through matching of retention time and ranking of the pearson correlation coefficient between the peaks. the value in the correlated activity column is the AUC of the activity peak. 
         msu.activity_annotation_features(
             ft=ft,
             aft=aft,
@@ -209,6 +210,7 @@ with st.form("Settings"):
             ydata_name=value_col
         )
 
+        # saves the results in a dictionary for display so that this alogrithm does not have to run everytime the user interacts with the web app
         st.session_state["results"]={
             "featuretable":ft,
             "activitytable":aft,
@@ -232,11 +234,15 @@ if st.session_state["results"] is not None:
     t1,t2,t3=st.tabs(["Activity peak data",'Significant active features','Complete feature table'])
 
     with t3:
+        # Displays the full feature table
         st.dataframe(st.session_state["results"]["featuretable"])
 
     with t1:
+        # Displays key information of every peak
         st.dataframe(st.session_state["results"]["activitytable"], use_container_width=True)
 
+        # Plot the 1d activity chromatogram, some apparent peaks will not be detected as these are artifacts from imaging.
+        # Sometimes spots that show activity, influence their neighbouring spots aswell, leading to multiple (if weaker) peaks for the same activity at different time points. this is why peak detection of activity peaks is done in 2d.
         fig,ax=plt.subplots()
         plots.plot_activity_chromatogram(
             figure=fig,
@@ -249,21 +255,7 @@ if st.session_state["results"] is not None:
         st.pyplot(fig)
 
         fig,ax=plt.subplots()
-        # heatmap=st.session_state["results"]["spot_df"].pivot_table(
-        #     values="smoothed_int",
-        #     index="row",
-        #     columns="column",
-        # )
-        # htmp=ax.imshow(heatmap)
-        # ax.axis("off")
-        # ax.scatter(
-        #     st.session_state["results"]["peaks"][:,1],
-        #     st.session_state["results"]["peaks"][:,0],
-        #     c="r",
-        #     marker="x",
-        #     label="Detected Peaks"
-        # )
-        # fig.colorbar(htmp,shrink=0.7,label="Normalized Spot-Intensities",orientation="horizontal",location="top")
+        # Plotting heatmap to showcase the detected peaks in 2d, as it might be easier to understand why only those have been detected
         plots.plot_heatmapv2(
             fig,
             ax,
@@ -273,7 +265,6 @@ if st.session_state["results"] is not None:
             colorbar_name="Spot Intensity [a.u.]",
             halo=any(st.session_state["results"]["spot_df"]["halo"]>0)
         )
-
         # Add location of detected peaks to heatmap
         ax.scatter(
             st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"]["peak_idx"],"column"],
@@ -281,7 +272,6 @@ if st.session_state["results"] is not None:
             c="r",
             marker="D",
         )
-        
         # Write name of peak to corresponding spot
         for i in st.session_state["results"]["activitytable"].index:
             ax.text(
@@ -296,35 +286,43 @@ if st.session_state["results"] is not None:
         st.pyplot(fig)
 
     with t2:
+        # Threshold of pearson correlation coefficient, features with lower correlation to the activity peak will not be seen as significant
         threshold=st.number_input(
             "Correlation Threshold (Pearson Correlation):",
             max_value=1.0,
             min_value=0.0,
             value=0.8
         )
-        
+        # List of peaks to select for peak shape overlay, to be appended with all detected peaks
         namelist=["Don't Display"]
+        # display a dataframe for all detected activity peaks containing information on all features with significant correlation
         for name,pft in st.session_state["results"]["ft_peaks"].items():
             st.markdown(f"**Significant features for `{name}`**")
             st.dataframe(pft.loc[pft[f"pearson_corr_{name}"]>=threshold].sort_values(f"pearson_corr_{name}",ascending=False))
             namelist.append(name)
             mst.v_space(2)
         
+        # Select peak for which to display the alignment of activity and feature peak
         dip_featurealignment=st.radio(
             "Display alignment of activity peak with significant features:",
             namelist,
             index=0
         )
 
+        # Display a plot for each significant feature showing the alignment of the selected activity peak to it
         if dip_featurealignment!="Don't Display":
             
+            # select only the significant features and sort them by correlation coefficient
             ft=st.session_state['results']['ft_peaks'][dip_featurealignment].loc[st.session_state['results']['ft_peaks'][dip_featurealignment][f"pearson_corr_{dip_featurealignment}"]>threshold].sort_values(f"pearson_corr_{dip_featurealignment}",ascending=False)
 
+            # get the index of the activity peak
             peakidx=int(dip_featurealignment.removeprefix("peak"))
             
             for i in ft.index:
+                # get the xic of the current feature
                 df=st.session_state["results"]["xics"][i].copy()
-        
+
+                # plot the xic of the current feature, with the feature peak maximum moved to 0
                 fig,ax=plt.subplots()
                 ax.plot(
                     df.rt-ft.loc[i,"RT"],
@@ -334,16 +332,20 @@ if st.session_state["results"] is not None:
                 
                 ax2=ax.twinx()
 
+                # get the values for the retention time of the activity peak witht the peak maximum moved to 0
                 activity_rt=st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[peakidx,"start_idx"]:st.session_state["results"]["activitytable"].loc[peakidx,"end_idx"],"RT"]-st.session_state["results"]["activitytable"].loc[peakidx,"RT"]
 
+                # get the intensity values of the activity peak
                 activity_int=st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[peakidx,"start_idx"]:st.session_state["results"]["activitytable"].loc[peakidx,"end_idx"],"smoothed_int"]
                 
+                # plot the activity peak
                 ax2.plot(
                     activity_rt,
                     activity_int,
                     c="lime"
                 )
                 
+                # Settings
                 ax.set(
                     ylabel="Intensity MS-signal [a.u.]",
                     xlabel="ΔRT from Peak-maximum [s]",
@@ -365,7 +367,7 @@ if st.session_state["results"] is not None:
                 st.pyplot(fig)
 
     with c:
-
+        # Download of a zip file containing 
         mst.download_gnpsmgf(
             st.session_state["results"]["consensus_map"],
             st.session_state["results"]["mzml_name"],

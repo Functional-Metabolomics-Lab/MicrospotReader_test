@@ -1,12 +1,14 @@
+import io
+
 import streamlit as st
 import pandas as pd
+import pyopenms as oms
+from pyopenms.plotting import plot_chromatogram
+import matplotlib.pyplot as plt
+
 import microspot_util as msu
 import microspot_util.streamlit as mst
 import microspot_util.plots as plots
-import pyopenms as oms
-import io
-from pyopenms.plotting import plot_chromatogram
-import matplotlib.pyplot as plt
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()

@@ -1,15 +1,5 @@
 import streamlit as st
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import matplotlib.patheffects as pe
-import numpy as np
-import pandas as pd
-from pathlib import Path
-import microspot_util as msu
 import microspot_util.streamlit as mst
-import microspot_util.plots as plots
-
-
 
 mst.page_setup()
 
@@ -43,6 +33,7 @@ st.markdown("""
             - Input: Centroided .mzML File of LC-MS run
             - Recommended: file from the same LC run as activity data
             - RT of compounds must be similar for activity data and MS data
+            - Currently adduct detection is only possible for data measured in positive ion mode
             """)
 
 st.markdown("### We value your Feedback!")

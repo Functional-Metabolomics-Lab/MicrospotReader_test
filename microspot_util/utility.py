@@ -16,7 +16,6 @@ import streamlit as st
 import pyopenms as oms
 import scipy.signal as signal
 import scipy.stats as stats
-import scipy.ndimage as ndimage
 
 @st.cache_data
 def conv_gridinfo(point1:str,point2:str,conv_dict:dict) -> dict:
@@ -106,6 +105,22 @@ def prep_img(filename:Path,invert:bool=False) -> np.array:
     return gray_img
 
 def baseline_correction2(array,conv_lvl=0.001,window_lvl=100,poly_lvl=2):
+    """
+    ## Description
+    Baseline correction of an input array using the savitz golay filter.
+    
+    ## Input
+
+    |Parameter|Type|Description|
+    |---|---|---|
+    |array|Seq, Array|Sequence to be baseline corrected|
+    |conv_lvl|float|convergence criteria for the determination of the baseline level||
+    |window_lvl|int|Window to be used for the savitzky-golay filter for detection of the baseline level|
+    |poly_lvl|int|order of the polynomial used to fit the data for baseline level detection|
+
+    ## Returns
+    Tuple of the values for the baseline aswell as the corrected baseline vales
+    """
     baseline_level=array.copy()
     
     if len(baseline_level)<window_lvl:
@@ -200,11 +215,14 @@ def baseline_noise(array:pd.Series, convergence_criteria:float=0.02):
     std_old=array.std()
 
     rmsd=10
-    while rmsd>convergence_criteria:
+    # Loop through the algorithm until the rmsd of the standard deviation is below a defined criterium
+    while rmsd>convergence_criteria:#
+        # exclude values in the array that are most likely outliers -> ie peaks
         test=array[array<mn_old+3*std_old]
+        # calculate the new mean and std
         mn_new=test.mean()
         std_new=test.std()
-        
+        # caluclate rmsd
         rmsd=np.sqrt(np.mean((std_new-std_old)**2))
         
         mn_old=mn_new
@@ -229,6 +247,7 @@ def peak_detection(df:pd.DataFrame,baseline_convergence:float=0.02,rel_height:fl
     ## Returns
     Dataframe containing information on peaks found in the spot-dataframe
     """
+    # *** Not used as this does 1d peak detection ***
     bl_std,bl_mn=baseline_noise(df[datacolumn_name],baseline_convergence)
 
     min_height=bl_mn+3*bl_std
@@ -272,14 +291,6 @@ def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="smoothed_int",thresh
     """
     # Create a heatmap from the spot intensities, it is better to do peak detection in 2d instead of on the chromatogram due to artifacts during image capturing.
     img=df.pivot_table(datacolumn_name,index="row_name",columns="column")
-    
-    # ****SMOOTHING DONE IN DATA MERGING STEP****
-    # # do 1d gaussian smoothing. not 2d because you dont want to effect neighbouring rows.
-    # img[:]=ndimage.gaussian_filter1d(img,1)
-    
-    # # merge the smoothed spot intensities into the main dataframe
-    # melt_img=pd.melt(img,value_name="smoothed_int",ignore_index=False)
-    # df=pd.merge(df,melt_img.reset_index(),on=["row_name","column"])
 
     # do 2d peak detection 
     peaks=skimage.feature.peak_local_max(
@@ -290,10 +301,7 @@ def img_peak_detection(df:pd.DataFrame,datacolumn_name:str="smoothed_int",thresh
     )
 
     # get the main df indexes of all minimas to figure out peak width
-    #minima=df.index[signal.argrelmin(df[datacolumn_name].to_numpy())]
-
     minima,_=signal.find_peaks(-df[datacolumn_name].to_numpy())
-
     minima=df.index[minima]
 
     # get the main df indexes of all peaks
@@ -577,6 +585,7 @@ def xic_generator(exp:oms.MSExperiment, ft:pd.DataFrame):
 
 
     """
+    # extract all spectra from the MSExperiment instance
     specs={spec.getRT():{"mz":spec.get_peaks()[0],"int":spec.get_peaks()[1]} for spec in exp if spec.getMSLevel()==1}
 
     xics={}
@@ -584,11 +593,8 @@ def xic_generator(exp:oms.MSExperiment, ft:pd.DataFrame):
         
         intsum_list=[]
         rtlist=[]
-
+        # for each spectrum add the intensities of all m/z values in the defined range of the feature to the xic
         for rt,pk in specs.items():
-
-            # if rt >= ft.loc[i,"RTstart"] and rt <= ft.loc[i,"RTend"]:
-
             intsum_list.append(pk["int"][(ft.loc[i,"MZstart"]<=pk["mz"]) & (ft.loc[i,"MZend"]>=pk["mz"])].sum())
             rtlist.append(rt)
 
@@ -600,7 +606,7 @@ def extract_xic_peakwindow(xic_dict:dict,ft:pd.DataFrame,window:float):
     """
     ## Description
 
-    Calculates the pearson correlation coefficient of a normalized activity peak to a normalized feature-peak correlated to the activity peak by retention time.
+    Extracts part of all xics defined by the location of their features peak-maximum and a given window.
     
     ## Input
 
@@ -617,6 +623,7 @@ def extract_xic_peakwindow(xic_dict:dict,ft:pd.DataFrame,window:float):
     cutxic={}
     for i, df in xic_dict.items():
         df_cut=df.loc[(df["rt"]>ft.loc[i,"RT"]-0.5*window)&(df["rt"]<ft.loc[i,"RT"]+0.5*window)].copy()
+        # Normalize peak
         df_cut["int"]=df_cut.loc[:,"int"]/(df_cut.loc[:,"int"].max())
         cutxic[i]=df_cut
     return cutxic
@@ -639,15 +646,22 @@ def peak_pearsoncorr(xic_dict,ft,ap_df,peak,idx,ydata_name):
     |ydata_name|str|Name of the Column in act_df containing the y-axis information of the activity chromatogram|
     """
 
+    # loops through all features correlated to the given activity peak by retention time
     for i in ft.loc[ft[f"corr_activity_peak{idx}"]>0].index:
+        # get the xic of the current feature
         df=xic_dict[i]
+        # check if the sampling rate of the feature xic is higher than that of the activity peak 
         if len(df)>=len(ap_df):
+            # interpolate values in activity peak to match the samling rate of the feature xic
             interpRT=np.linspace(peak.RTstart,peak.RTend,len(df))
             interpInt=np.interp(interpRT,ap_df["RT"],ap_df[ydata_name])
+            # calculate the pearson correlation of the peaks
             ft.loc[i,f"pearson_corr_peak{idx}"]=stats.pearsonr(df["int"],interpInt).statistic
         else:
+            # interpolate values in the feature xic to match the sampling rate of the activity peak
             interpRT=np.linspace(df.rt.iloc[0],df.rt.iloc[-1],len(ap_df))
             interpInt=np.interp(interpRT,df.rt,df["int"])
+            # Calculate the pearson correlation
             ft.loc[i,f"pearson_corr_peak{idx}"]=stats.pearsonr(interpInt,ap_df[ydata_name]).statistic
 
 def peakshape_corr(xic_dict:dict,ft:pd.DataFrame,ap_df:pd.DataFrame,act_df:pd.DataFrame,idx:int,ydata_name:str="norm_intensity"):
@@ -667,12 +681,16 @@ def peakshape_corr(xic_dict:dict,ft:pd.DataFrame,ap_df:pd.DataFrame,act_df:pd.Da
     |idx|int|index of the current row in the feature table|
     |ydata_name|str|Name of the Column in act_df containing the y-axis information of the activity chromatogram|
     """
-    pk=ap_df.loc[idx].copy()
 
+    pk=ap_df.loc[idx].copy()
+    # extract only the current peak from the activity chromatogram
     cutap=act_df.loc[pk["start_idx"]:pk["end_idx"]].copy()
+    # Normalize peak
     cutap[ydata_name]=cutap[ydata_name]/cutap[ydata_name].max()
+    # determine the width of the peak in s
     width=np.abs(pk["RTend"]-pk["RTstart"])
 
+    # extract the peak window
     cutxic=extract_xic_peakwindow(xic_dict,ft,width)
     
     peak_pearsoncorr(cutxic,ft,cutap,pk,idx,ydata_name)
