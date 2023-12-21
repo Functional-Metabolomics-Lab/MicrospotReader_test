@@ -89,7 +89,7 @@ with st.form("Settings"):
 
     with c1:
         mass_error=st.number_input(
-            "Mass Error for feature detection*[in ppm]*:",
+            "Mass Error for feature detection *[in ppm]*:",
             value=10.0
         )
         
@@ -99,7 +99,7 @@ with st.form("Settings"):
         )
 
         rt_tolerance=st.number_input(
-            "Retention Time tolerance *[in s]*",
+            "Retention Time tolerance *[in s]*:",
             value=1
         )
 
@@ -131,7 +131,7 @@ with st.form("Settings"):
         )
         
         rt_offset=st.number_input(
-            "Retention Time offset *[in s]*",
+            "Retention Time offset *[in s]*:",
             value=4
         )
 
@@ -352,7 +352,7 @@ if st.session_state["results"] is not None:
                 
                 ax2=ax.twinx()
 
-                # get the values for the retention time of the activity peak witht the peak maximum moved to 0
+                # get the values for the retention time of the activity peak with the peak maximum moved to 0
                 activity_rt=st.session_state["results"]["spot_df"].loc[st.session_state["results"]["activitytable"].loc[peakidx,"start_idx"]:st.session_state["results"]["activitytable"].loc[peakidx,"end_idx"],"RT"]-st.session_state["results"]["activitytable"].loc[peakidx,"RT"]
 
                 # get the intensity values of the activity peak
