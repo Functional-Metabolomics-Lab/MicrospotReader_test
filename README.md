@@ -1,4 +1,4 @@
-![image](assets/logo_uspotreader.png)
+![image](assets/Logo.png)
 
 # MicroSpot Reader
 
@@ -18,17 +18,13 @@ The Web-App is based on streamlit and currently runs on the streamlit cloud serv
 
 `cd <filepath>`
 
-3. Create and activate a new python environment using Python 3.11 (example using anaconda):
+1. Create and activate a new conda environment:
 
-`conda create --name microspotreader python=3.11`
+`conda env create -f environment.yml`
 
-`conda activate microspotreader`
+`conda activate uspotreader`
 
-4. Install all packages from the `requirements.txt` file:
-
-`python -m pip install -r requirements.txt`
-
-5. Start the App by running the following command:
+4. Start the App by running the following command:
 
 `streamlit run MicrospotReader_App.py`
 
@@ -37,8 +33,10 @@ The Web-App is based on streamlit and currently runs on the streamlit cloud serv
 
 Additionally, this Repository contains Jupyter Notebooks in the `notebooks`-folder if you do not wish to use the Web-App:
 
-- `microspot_reader.ipynb`: Detection and analysis of MicroSpots as well as antimicrobial halos within an image. Determination of bioactivity.
+- `image_analysis.ipynb`: Detection and analysis of MicroSpots as well as antimicrobial halos within an image. Determination of bioactivity.
 
-- `grid_concatenator.ipynb`: Concatenation of Spot-Lists of the same LC-MS run and correlation of MicroSpots with a retention time.
+- `data_preparation.ipynb`: Concatenation of Spot-Lists of the same LC-MS run and correlation of MicroSpots with a retention time.
 
 - `mzml_annotation.ipynb`: Annotation of MS1 spectra within a .mzML file with bioactivity at the corresponding retention time.
+
+- `feature_finding.ipynb`: Feature detection and annotation with activity data from .csv file prepared with previous stepas and a .mzML file.
