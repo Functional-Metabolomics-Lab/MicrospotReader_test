@@ -185,10 +185,10 @@ if dataprep is True:
     
     elif st.session_state["ignoreCtrl"]==False:
         
-        df.loc[df["type"] != None, "RT"]=np.linspace(
+        df.loc[df["type"] != "Empty", "RT"]=np.linspace(
             t_0,
             t_end,
-            num=len(df)
+            num=len(df.loc[df["type"] != "Empty"])
         )
 
     df=df.loc[df["RT"]>0].reset_index().copy()

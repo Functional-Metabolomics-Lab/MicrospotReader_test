@@ -332,7 +332,7 @@ if inputfile:
                 
                 st.session_state["adv_settings"]["halo_det"]["disk"]=st.number_input(
                     "Disk radius for morphological dilation *[in pixels]*:",
-                    value=3,
+                    value=10,
                 )
 
             with c2:
@@ -457,7 +457,7 @@ if st.session_state["analyze"] is True:
             st.session_state["adv_settings"]["spot_misc"]["int_rad"]
         )
         if s.row_name in st.session_state["ctrl_rows"] or s.col in st.session_state["ctrl_cols"]:
-            s.type=np.nan
+            s.type="Empty"
         
         if s.row_name+str(s.col) in st.session_state["ctrl_spots"]:
             s.type="Control"
