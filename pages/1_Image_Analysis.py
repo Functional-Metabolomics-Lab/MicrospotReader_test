@@ -1,11 +1,13 @@
+from pathlib import Path
+
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
-import microspot_util as msu
-import microspot_util.streamlit as mst
-import microspot_util.plots as plots
-import skimage
+from skimage.util import invert
+
+import microspot_reader as msu
+import microspot_reader.streamlit as mst
+import microspot_reader.plots as plots
 
 # Initialize session-states and add basic design elements.
 mst.page_setup()
@@ -49,11 +51,22 @@ row_conv_inv={v:k for k,v in row_conv.items()}
 
 
 # Selection between custom image upload or an example.
-choose_input=st.selectbox("File upload:",["Upload Image","Example for Testing"],on_change=mst.set_analyze_False)
+choose_input=st.selectbox(
+    "File upload:",
+    [
+        "Upload Image",
+        "Example Part 1 (Spot-Idx: A1-L11, Ctrl: Col 1)",
+        "Example Part 2 (Spot-Idx: A12-L22, Ctrl: Col 22)"
+    ],
+    on_change=mst.set_analyze_False
+)
 
-# Example image
-if choose_input=="Example for Testing":
-    inputfile=Path(r"test_images/standard_mix.tif")
+# Example images
+if choose_input=="Example Part 1 (Spot-Idx: A1-L11, Ctrl: Col 1)":
+    inputfile=Path(r"example_files/part1_a1-l11.tif")
+
+elif choose_input=="Example Part 2 (Spot-Idx: A12-L22, Ctrl: Col 22)":
+    inputfile=Path(r"example_files/part2_a12-l22.tif")
 
 # File uploader for custom image files
 else:
@@ -319,7 +332,7 @@ if inputfile:
                 
                 st.session_state["adv_settings"]["halo_det"]["disk"]=st.number_input(
                     "Disk radius for morphological dilation *[in pixels]*:",
-                    value=3,
+                    value=10,
                 )
 
             with c2:
@@ -375,6 +388,7 @@ if st.session_state["analyze"] is True:
         troubleshoot=True
         )
     
+    # determination of avg spot radius, used for backfilling of spots during spot correction
     avg_spotradius=np.mean([s.rad for s in init_spots])
 
     # Create an empty image and draw a dot for each detected spot.
@@ -434,7 +448,7 @@ if st.session_state["analyze"] is True:
     )
 
     if st.session_state["adv_settings"]["spot_misc"]["invert_int"] is True:
-        st.session_state["img"]=skimage.util.invert(st.session_state["img"])
+        st.session_state["img"]=invert(st.session_state["img"])
 
     # Calculate the spot intensity and label controls
     for s in sort_spots:
@@ -443,7 +457,7 @@ if st.session_state["analyze"] is True:
             st.session_state["adv_settings"]["spot_misc"]["int_rad"]
         )
         if s.row_name in st.session_state["ctrl_rows"] or s.col in st.session_state["ctrl_cols"]:
-            s.type=np.nan
+            s.type="Empty"
         
         if s.row_name+str(s.col) in st.session_state["ctrl_spots"]:
             s.type="Control"
@@ -565,10 +579,6 @@ if st.session_state["analyze"] is True:
                 ax.scatter(s.x,s.y, c="k", marker="x")
             st.pyplot(fig_grid)
             figuredict["detected_grid"]=fig_grid
-
-            fig,ax=plt.subplots()
-            ax.imshow(test["edge"])
-            st.pyplot(fig)
 
         with col2: 
             st.markdown("## Detected Grid")
